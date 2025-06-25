@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+{% block title %}プライバシーポリシー{% endblock %}
+{% block content %}
+  <div class="container">
+    <h1>プライバシーポリシー</h1>
+    
+    <div class="privacy-content">
+      <p class="last-updated">最終更新日: 2024年1月1日</p>
+      
+      <section>
+        <h2>1. 個人情報の収集について</h2>
+        <p>当サービスでは、以下の個人情報を収集いたします：</p>
+        <ul>
+          <li>ユーザー名</li>
+          <li>メールアドレス</li>
+          <li>アップロードされたレシート画像</li>
+          <li>レシートから抽出された購入情報（店舗名、金額、日付等）</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>2. 個人情報の利用目的</h2>
+        <p>収集した個人情報は、以下の目的で利用いたします：</p>
+        <ul>
+          <li>レシートのOCR処理による情報抽出</li>
+          <li>購入履歴の管理・分析</li>
+          <li>ユーザーアカウントの管理</li>
+          <li>サービスの改善・開発</li>
+          <li>お客様サポートの提供</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>3. 個人情報の第三者提供</h2>
+        <p>当サービスでは、以下の場合を除き、個人情報を第三者に提供いたしません：</p>
+        <ul>
+          <li>お客様の同意がある場合</li>
+          <li>法令に基づく場合</li>
+          <li>人の生命、身体または財産の保護のために必要がある場合</li>
+          <li>公衆衛生の向上または児童の健全な育成の推進のために特に必要がある場合</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>4. 個人情報の管理</h2>
+        <p>当サービスでは、個人情報の正確性及び安全性を確保するために、セキュリティ対策を実施し、個人情報の漏洩、滅失またはき損の防止その他の個人情報の適切な管理のために必要かつ適切な措置を講じます。</p>
+      </section>
+
+      <section>
+        <h2>5. 個人情報の開示・訂正・削除</h2>
+        <p>お客様は、当サービスが保有する自己の個人情報について、開示、訂正、利用停止、削除を請求することができます。これらの請求については、以下の連絡先までお問い合わせください。</p>
+        <div class="contact-info">
+          <p><strong>連絡先:</strong></p>
+          <p>メール: privacy@example.com</p>
+          <p>電話: 03-1234-5678</p>
+        </div>
+      </section>
+
+      <section>
+        <h2>6. Cookieの使用</h2>
+        <p>当サービスでは、ユーザーエクスペリエンスの向上のためにCookieを使用する場合があります。ブラウザの設定でCookieを無効にすることも可能ですが、その場合、サービスの一部機能が正常に動作しない可能性があります。</p>
+      </section>
+
+      <section>
+        <h2>7. プライバシーポリシーの変更</h2>
+        <p>当サービスは、必要に応じてこのプライバシーポリシーを変更することがあります。重要な変更がある場合は、サービス内でお知らせいたします。</p>
+      </section>
+
+      <section>
+        <h2>8. お問い合わせ</h2>
+        <p>プライバシーポリシーに関するお問い合わせは、以下の連絡先までお願いいたします。</p>
+        <div class="contact-info">
+          <p><strong>お問い合わせ先:</strong></p>
+          <p>メール: support@example.com</p>
+          <p>電話: 03-1234-5678</p>
+          <p>受付時間: 平日 9:00-18:00</p>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <style>
+    .privacy-content {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      line-height: 1.6;
+    }
+    
+    .last-updated {
+      color: #666;
+      font-style: italic;
+      margin-bottom: 30px;
+    }
+    
+    .privacy-content h1 {
+      color: #2d3748;
+      border-bottom: 3px solid #4fd1c5;
+      padding-bottom: 10px;
+      margin-bottom: 30px;
+    }
+    
+    .privacy-content h2 {
+      color: #38b2ac;
+      margin-top: 30px;
+      margin-bottom: 15px;
+      font-size: 1.3em;
+    }
+    
+    .privacy-content section {
+      margin-bottom: 30px;
+    }
+    
+    .privacy-content ul {
+      margin-left: 20px;
+      margin-bottom: 15px;
+    }
+    
+    .privacy-content li {
+      margin-bottom: 8px;
+    }
+    
+    .contact-info {
+      background: #f7fafc;
+      padding: 15px;
+      border-left: 4px solid #4fd1c5;
+      margin: 15px 0;
+      border-radius: 4px;
+    }
+    
+    .contact-info p {
+      margin: 5px 0;
+    }
+    
+    @media (max-width: 768px) {
+      .privacy-content {
+        padding: 15px;
+      }
+      
+      .privacy-content h1 {
+        font-size: 1.5em;
+      }
+      
+      .privacy-content h2 {
+        font-size: 1.2em;
+      }
+    }
+  </style>
+{% endblock %}

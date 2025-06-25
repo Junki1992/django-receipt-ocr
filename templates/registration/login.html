@@ -1,0 +1,48 @@
+{% extends "registration/auth_base.html" %}
+{% load static %}
+
+{% block title %}ログイン{% endblock %}
+
+{% block extrastyle %}
+  <link rel="stylesheet" href="{% static 'css/auth_style.css' %}">
+{% endblock %}
+
+{% block main_content %}
+<div class="main" id="main">
+  <div class="auth-container">
+    <h2 class="auth-title">ログイン</h2>
+    
+    {% if messages %}
+      {% for message in messages %}
+        <div class="auth-message {% if message.tags %}auth-{{ message.tags }}{% endif %}">
+          {{ message }}
+        </div>
+      {% endfor %}
+    {% endif %}
+    
+    {% if form.errors %}
+      <div class="auth-error">
+        ユーザー名またはパスワードが正しくありません。
+      </div>
+    {% endif %}
+    
+    <form method="post" class="auth-form" autocomplete="on">
+      {% csrf_token %}
+      <div>
+        <label for="id_username">ユーザー名</label>
+        {{ form.username }}
+      </div>
+      <div>
+        <label for="id_password">パスワード</label>
+        {{ form.password }}
+      </div>
+      <button type="submit">ログイン</button>
+    </form>
+    <div class="auth-links">
+      <a href="{% url 'password_reset' %}">パスワードを忘れた方はこちら</a>
+      <span class="auth-separator">|</span>
+      <a href="{% url 'signup' %}">新規アカウント作成</a>
+    </div>
+  </div>
+</div>
+{% endblock main_content %} 

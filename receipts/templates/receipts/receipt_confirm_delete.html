@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+  <h2>領収書削除確認</h2>
+  <p>本当にこの領収書を削除しますか？</p>
+  <form method="post">
+    {% csrf_token %}
+    <button type="submit">削除する</button>
+    <a href="{% url 'dashboard' %}">キャンセル</a>
+  </form>
+{% endblock %}

@@ -1,0 +1,310 @@
+{% extends "base.html" %}
+{% load static %}
+{% load humanize %}
+
+{% block content %}
+<style>
+  .admin-table th, .admin-table td {
+    border: 1px solid #ddd;
+    padding: 8px;
+  }
+  .admin-table th {
+    background: #f5f5f5;
+    font-weight: bold;
+  }
+  .admin-btn {
+    background: #4fd1c5;
+    color: #fff!important;
+    padding: 0.3em 1em;
+    border-radius: 0.5em;
+    text-decoration: none;
+    font-weight: bold;
+    margin: 0 0.2em;
+  }
+  .admin-btn:hover {
+    background: #38b2ac;
+  }
+  
+  .admin-btn:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+  }
+  
+  /* 削除ボタンを控えめに */
+  .delete-btn {
+    background: #f8f9fa;
+    color: #6c757d;
+    border: 1px solid #dee2e6;
+    padding: 0.2em 0.6em;
+    border-radius: 0.3em;
+    font-size: 0.85em;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin: 0 0.1em;
+  }
+  .delete-btn:hover {
+    background: #e9ecef;
+    color: #495057;
+    border-color: #adb5bd;
+  }
+  
+  /* ページネーション情報 */
+  .pagination-info {
+    margin: 1em 0;
+    color: #666;
+    font-size: 0.9em;
+  }
+  
+  /* ページネーション */
+  .pagination {
+    margin: 2em 0;
+    text-align: center;
+  }
+  
+  .page-btn {
+    display: inline-block;
+    padding: 0.5em 1em;
+    margin: 0 0.2em;
+    background: #f8f9fa;
+    color: #333;
+    text-decoration: none;
+    border: 1px solid #ddd;
+    border-radius: 0.3em;
+    transition: background 0.2s;
+  }
+  
+  .page-btn:hover {
+    background: #e9ecef;
+    text-decoration: none;
+  }
+  
+  .page-btn.current {
+    background: #4fd1c5;
+    color: #fff;
+    border-color: #4fd1c5;
+  }
+  
+  .page-btn.current:hover {
+    background: #38b2ac;
+  }
+  </style>
+<h1>詳細一覧</h1>
+<div style="margin-bottom: 1em;">
+  <a href="{% url 'receipt_create' %}" class="admin-btn">+ 新規領収書登録</a>
+</div>
+
+<!-- 合計件数・合計金額 -->
+<!-- <div style="margin-bottom: 1em;">
+  <table>
+    <tr>
+      <th>合計件数</th>
+      <th>合計金額</th>
+    </tr>
+    <tr>
+      <td>{{ total_count }}</td>
+      <td>¥{{ total_amount|intcomma }}</td>
+    </tr>
+  </table>
+</div> -->
+
+<!-- カテゴリ別集計 -->
+<!-- <div style="margin-bottom: 1em;">
+  <table>
+    <tr>
+      <th>カテゴリ</th>
+      <th>件数</th>
+      <th>合計金額</th>
+    </tr>
+    {% for row in category_summary %}
+    <tr>
+      <td>{{ row.category|default:"(未分類)" }}</td>
+      <td>{{ row.count }}</td>
+      <td>¥{{ row.total|intcomma }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div> -->
+
+<!-- Chart.js CDN -->
+<!-- <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const canvas = document.getElementById('categoryChart');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const categoryLabels = JSON.parse(canvas.dataset.labels || '[]');
+  const categoryData = JSON.parse(canvas.dataset.data || '[]');
+  const categoryCount = parseInt(canvas.dataset.count || '0');
+  const pieColors = [
+    "#4dc9f6","#00bfae","#537bc4","#acc236","#166a8f","#00a950","#b2dfdb","#b3cde0","#f6c85f","#f3a683","#58595b"
+  ];
+  let chartInstance = null;
+  function renderChart(type) {
+    if (chartInstance) chartInstance.destroy();
+    chartInstance = new Chart(ctx, {
+      type: type,
+      data: {
+        labels: categoryLabels,
+        datasets: [{
+          label: '合計金額',
+          data: categoryData,
+          backgroundColor: pieColors.slice(0, categoryCount),
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: type === 'pie' } },
+        scales: type === 'pie' ? {} : {
+          y: { beginAtZero: true, ticks: { color: '#181f27' } },
+          x: { ticks: { color: '#181f27' } }
+        }
+      }
+    });
+  }
+  renderChart('bar');
+});
+</script> -->
+
+<!-- ページネーション情報 -->
+<div class="pagination-info">
+  <p>全 {{ page_obj.paginator.count }} 件中 {{ page_obj.start_index }}-{{ page_obj.end_index }} 件を表示</p>
+</div>
+
+<table class="admin-table" style="width:100%; border-collapse:collapse;">
+  <thead>
+    <tr>
+      <th><input type="checkbox" id="check-all"></th>
+      <th>ID</th>
+      <th>ユーザー</th>
+      <th>日付</th>
+      <th>画像</th>
+      <th>詳細</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for receipt in receipts %}
+    <tr>
+      <td><input type="checkbox" class="row-check" value="{{ receipt.id }}"></td>
+      <td>{{ receipt.id }}</td>
+      <td>{{ receipt.user }}</td>
+      <td>{{ receipt.uploaded_at|date:"Y-m-d H:i" }}</td>
+      <td>
+        {% if receipt.file %}
+          <img src="{{ receipt.file.url }}" style="max-height:60px;">
+        {% endif %}
+      </td>
+      <td>
+        <a href="{% url 'receipt_edit' receipt.id %}" class="admin-btn">編集</a>
+        <form action="{% url 'receipt_delete' receipt.id %}" method="post" style="display: inline;">
+            {% csrf_token %}
+            <button type="submit" class="delete-btn" onclick="return confirm('本当にこの領収書を削除しますか？');">削除</button>
+        </form>
+      </td>
+    </tr>
+    {% empty %}
+    <tr>
+      <td colspan="6">レシートがありません</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<!-- ページネーション -->
+{% if page_obj.has_other_pages %}
+<div class="pagination">
+  {% if page_obj.has_previous %}
+    <a href="?page=1" class="page-btn">&laquo; 最初</a>
+    <a href="?page={{ page_obj.previous_page_number }}" class="page-btn">&lsaquo; 前へ</a>
+  {% endif %}
+
+  {% for num in page_obj.paginator.page_range %}
+    {% if page_obj.number == num %}
+      <span class="page-btn current">{{ num }}</span>
+    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+      <a href="?page={{ num }}" class="page-btn">{{ num }}</a>
+    {% endif %}
+  {% endfor %}
+
+  {% if page_obj.has_next %}
+    <a href="?page={{ page_obj.next_page_number }}" class="page-btn">次へ &rsaquo;</a>
+    <a href="?page={{ page_obj.paginator.num_pages }}" class="page-btn">最後 &raquo;</a>
+  {% endif %}
+</div>
+{% endif %}
+
+<button id="delete-selected" class="admin-btn" style="margin:1em 0;" disabled>選択した項目を削除</button>
+
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script>
+$(document).ready(function() {
+    const deleteBtn = $('#delete-selected');
+    const checkAll = $('#check-all');
+    const rowChecks = $('.row-check');
+
+    // ボタンの有効/無効を切り替える関数
+    function toggleDeleteButton() {
+        const anyChecked = rowChecks.is(':checked');
+        deleteBtn.prop('disabled', !anyChecked);
+    }
+
+    // 「すべて選択」チェックボックスのロジック
+    checkAll.on('change', function() {
+        rowChecks.prop('checked', this.checked);
+        toggleDeleteButton();
+    });
+
+    // 個別のチェックボックスのロジック
+    rowChecks.on('change', function() {
+        if (rowChecks.length === $('.row-check:checked').length) {
+            checkAll.prop('checked', true);
+        } else {
+            checkAll.prop('checked', false);
+        }
+        toggleDeleteButton();
+    });
+    
+    // ページ読み込み時の初期状態
+    toggleDeleteButton();
+
+    // 削除ボタンのクリックイベント
+    deleteBtn.on('click', function() {
+        const ids = $('.row-check:checked').map(function() {
+            return $(this).val();
+        }).get();
+
+        if (ids.length === 0) {
+            alert('削除する項目を選択してください');
+            return;
+        }
+
+        if (!confirm('本当に選択した' + ids.length + '件の項目を削除しますか？')) {
+            return;
+        }
+
+        // 動的にフォームを作成して送信
+        const form = $('<form>', {
+            action: '{% url "receipt_bulk_delete" %}',
+            method: 'POST'
+        });
+
+        form.append($('<input>', {
+            type: 'hidden',
+            name: 'csrfmiddlewaretoken',
+            value: '{{ csrf_token }}'
+        }));
+
+        ids.forEach(function(id) {
+            form.append($('<input>', {
+                type: 'hidden',
+                name: 'ids',
+                value: id
+            }));
+        });
+
+        form.appendTo('body').submit();
+    });
+});
+</script>
+{% endblock %}
+

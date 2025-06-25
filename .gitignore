@@ -1,0 +1,8 @@
+.env
+credentials.json
+db.sqlite3
+*.log
+__pycache__/
+.DS_Store
+media/
+media/

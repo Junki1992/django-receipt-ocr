@@ -1,0 +1,9 @@
+{% for receipt in receipts %}
+  <div class="receipt-item">
+    <span style="color:#888;">{{ receipt.uploaded_at|date:"Y-m-d H:i" }}</span>
+    <strong>{{ receipt.store_name|default:"店舗不明" }}</strong>
+    <span>{{ receipt.total_amount }}円</span>
+  </div>
+{% empty %}
+  <div>まだ領収書がありません。</div>
+{% endfor %}

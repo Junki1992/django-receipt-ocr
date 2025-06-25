@@ -1,0 +1,29 @@
+{% extends "registration/auth_base.html" %}
+{% load static %}
+
+{% block title %}ログアウト{% endblock %}
+
+{% block extrastyle %}
+  <link rel="stylesheet" href="{% static 'css/auth_style.css' %}">
+{% endblock %}
+
+{% block main_content %}
+<div class="main" id="main">
+    <div class="auth-container">
+      <h2 class="auth-title">ログアウトしました</h2>
+      <p class="auth-message">ご利用ありがとうございました。</p>
+      <div class="auth-links">
+        <a href="{% url 'login' %}">再度ログインする</a>
+      </div>
+    </div>
+</div>
+{% endblock main_content %}
+
+{% block extra_js %}
+<script>
+  history.pushState(null, null, location.href);
+  window.addEventListener('popstate', function(event) {
+    location.replace("{% url 'login' %}");
+  });
+</script>
+{% endblock extra_js %} 

@@ -1,0 +1,67 @@
+{% extends "admin/change_list.html" %}
+{% load static %}
+
+{% block content %}
+  {{ block.super }}
+  <!-- モーダル本体 -->
+  <div id="image-modal" class="modal" style="display:none;">
+    <span class="close">&times;</span>
+    <img class="modal-content" id="modal-img">
+  </div>
+{% endblock %}
+
+{% block extrastyle %}
+  {{ block.super }}
+  <style>
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 9999;
+      padding-top: 60px;
+      left: 0; top: 0; width: 100%; height: 100%;
+      overflow: auto;
+      background-color: rgba(0,0,0,0.8);
+    }
+    .modal-content {
+      margin: auto;
+      display: block;
+      max-width: 90vw;
+      max-height: 80vh;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px #000;
+    }
+    .close {
+      position: absolute;
+      top: 30px;
+      right: 40px;
+      color: #fff;
+      font-size: 40px;
+      font-weight: bold;
+      cursor: pointer;
+      z-index: 10000;
+    }
+    .receipt-thumbnail { cursor: pointer; }
+  </style>
+{% endblock %}
+
+{% block extrahead %}
+  {{ block.super }}
+  <script>
+  document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.receipt-thumbnail').forEach(function(img) {
+      img.addEventListener('click', function() {
+        var modal = document.getElementById('image-modal');
+        var modalImg = document.getElementById('modal-img');
+        modal.style.display = "block";
+        modalImg.src = this.src;
+      });
+    });
+    document.querySelector('#image-modal .close').onclick = function() {
+      document.getElementById('image-modal').style.display = "none";
+    };
+    document.getElementById('image-modal').onclick = function(e) {
+      if (e.target === this) this.style.display = "none";
+    };
+  });
+  </script>
+{% endblock %}

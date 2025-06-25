@@ -1,0 +1,615 @@
+{% extends "base.html" %}
+{% load static %}
+{% load humanize %}
+
+{% block title %}領収書アップロード{% endblock %}
+
+{% block content %}
+<div class="upload-container">
+  <h1>領収書をアップロード</h1>
+  <p class="subtitle">レシートの写真をまとめてアップロードできます</p>
+
+  {% if error %}
+  <div class="alert alert-danger">{{ error }}</div>
+  {% endif %}
+
+  <div class="info-cards">
+    <div class="info-card">
+      <i class="fas fa-file-alt"></i>
+      <p>対応形式<br>JPG, PNG, WEBP, ZIP</p>
+    </div>
+    <div class="info-card">
+      <i class="fas fa-weight-hanging"></i>
+      <p>最大サイズ<br>16MB</p>
+    </div>
+    <div class="info-card">
+      <i class="fas fa-file-archive"></i>
+      <p>推奨<br>ZIPで最大100枚</p>
+    </div>
+  </div>
+
+  <form method="post" enctype="multipart/form-data" id="upload-form">
+    {% csrf_token %}
+    <div class="drop-zone" id="drop-zone">
+      <input type="file" id="file-input" name="receipt" accept=".jpg,.jpeg,.png,.gif,.webp,.zip" multiple required>
+      <div class="drop-zone-prompt">
+        <i class="fas fa-cloud-upload-alt"></i>
+        <p class="drop-guide-pc">ここにファイルをドラッグ＆ドロップ</p>
+        <p class="drop-guide-mobile">写真を選択 または撮影してください</p>
+        <span class="or-text">または</span>
+        <label for="file-input" class="browse-btn">ファイルを選択</label>
+      </div>
+    </div>
+
+    <div id="file-preview" class="file-preview"></div>
+
+    <div class="upload-status" id="upload-status">
+      <div class="spinner"></div>
+      <p>アップロード中...</p>
+    </div>
+
+    <div class="actions">
+      <button type="submit" id="submit-button" class="btn btn-primary">
+        <i class="fas fa-upload"></i> アップロード
+      </button>
+      <button type="reset" id="reset-button" class="btn btn-secondary">
+        <i class="fas fa-undo"></i> リセット
+      </button>
+      <a href="{% url 'export_receipts_csv' %}" class="btn btn-secondary" id="csv-download-btn">
+        <i class="fas fa-file-csv"></i> CSVダウンロード
+      </a>
+    </div>
+  </form>
+
+  <div id="results-container" class="results-container"></div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+  .upload-container {
+    width: calc(100% - 20px);
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 1em;
+    box-sizing: border-box;
+  }
+  .upload-container h1 {
+    text-align: center;
+    font-size: 1.8em;
+    color: #2c3e50;
+    margin-bottom: 0.2em;
+  }
+  .subtitle {
+    text-align: center;
+    color: #6c757d;
+    margin-bottom: 2em;
+  }
+  .info-cards {
+    display: flex;
+    justify-content: space-around;
+    gap: 1em;
+    margin-bottom: 2em;
+  }
+  .info-card {
+    background: #f8f9fa;
+    border-radius: 0.8em;
+    padding: 1em;
+    text-align: center;
+    flex: 1;
+    font-size: 0.9em;
+    color: #495057;
+  }
+  .info-card i {
+    font-size: 1.8em;
+    color: #38b2ac;
+    margin-bottom: 0.5em;
+  }
+  .info-card p {
+    margin: 0;
+    line-height: 1.4;
+  }
+  .drop-zone {
+    border: 2px dashed #ced4da;
+    border-radius: 1em;
+    padding: 2em;
+    text-align: center;
+    cursor: pointer;
+    background: #fff;
+    transition: background-color 0.2s, border-color 0.2s;
+    position: relative;
+    margin-bottom: 1.5em;
+  }
+  .drop-zone.dragover {
+    background-color: #e6fffa;
+    border-color: #38b2ac;
+  }
+  .drop-zone input[type="file"] {
+    display: none;
+  }
+  .drop-zone-prompt i {
+    font-size: 3em;
+    color: #adb5bd;
+    margin-bottom: 0.5em;
+    transition: color 0.2s;
+  }
+  .drop-zone:hover .drop-zone-prompt i {
+    color: #38b2ac;
+  }
+  .drop-zone-prompt p {
+    margin: 0 0 0.5em 0;
+    font-size: 1.1em;
+    font-weight: bold;
+    color: #495057;
+  }
+  .or-text {
+    color: #6c757d;
+    margin-bottom: 0.8em;
+    display: block;
+  }
+  .browse-btn {
+    background: #fff;
+    color: #38b2ac;
+    border: 1px solid #38b2ac;
+    border-radius: 0.5em;
+    padding: 0.6em 1.2em;
+    cursor: pointer;
+    transition: background-color 0.2s, color 0.2s;
+    margin-top: 1.2em;
+  }
+  .browse-btn:hover {
+    background: #38b2ac;
+    color: #fff;
+  }
+  .file-preview {
+    margin-bottom: 1.5em;
+    font-size: 0.9em;
+  }
+  .preview-item {
+    background: #f8f9fa;
+    border-radius: 0.5em;
+    padding: 0.5em 1em;
+    display: flex;
+    align-items: center;
+    gap: 0.8em;
+  }
+  .preview-item i {
+    color: #6c757d;
+  }
+  .actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.8em;
+    margin-bottom: 2em;
+  }
+  .btn {
+    width: 100%;
+    padding: 0.9em;
+    font-size: 1.1em;
+    font-weight: bold;
+    border-radius: 0.7em;
+    border: none;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.1s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5em;
+    box-sizing: border-box;
+  }
+  .btn:hover {
+    opacity: 0.9;
+    transform: translateY(-2px);
+  }
+  .btn-primary {
+    background: linear-gradient(90deg, #38b2ac 0%, #4fd1c5 100%);
+    color: #fff;
+  }
+  .btn-secondary {
+    background: #e2e8f0;
+    color: #38b2ac;
+    border: 1px solid #cbd5e0;
+  }
+  .upload-status {
+    display: none;
+    text-align: center;
+    margin: 2em 0;
+  }
+  .upload-status.active {
+    display: block;
+  }
+  .spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #38b2ac;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 1em auto;
+  }
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+  .results-container { margin-top: 2em; }
+  .result-item {
+    border-radius: 0.8em;
+    padding: 1em;
+    margin-bottom: 1em;
+    border: 1px solid;
+  }
+  .result-header { display: flex; align-items: center; gap: 0.8em; margin-bottom: 0.5em; }
+  .result-header .status { font-weight: bold; margin-left: auto; }
+  .status-ok { background: #e6fffa; border-color: #38b2ac; }
+  .status-ok .result-header i, .status-ok .result-header .status { color: #2f855a; }
+  .status-error { background: #fff5f5; border-color: #fc8181; }
+  .status-error .result-header i, .status-error .result-header .status { color: #c53030; }
+  
+  @media (max-width: 599px) {
+    #csv-download-btn {
+      display: none;
+    }
+
+    .upload-container {
+      margin: 0 10px;
+    }
+  }
+
+  @media (min-width: 600px) {
+    .actions {
+      grid-template-columns: 2fr 1fr 1fr;
+    }
+  }
+
+  .drop-guide-pc {
+    display: block;
+  }
+  .drop-guide-mobile {
+    display: none;
+  }
+  @media (max-width: 600px) {
+    .drop-guide-pc {
+      display: none;
+    }
+    .drop-guide-mobile {
+      display: block;
+    }
+    .or-text {
+      display: none;
+    }
+  }
+
+  .result-table {
+    width: 100%;
+    max-width: 700px;
+    border-collapse: collapse;
+    margin: 0 auto;
+    background: #fff;
+    font-size: 1rem;
+  }
+  .result-table th, .result-table td {
+    border: 1px solid #e0e0e0;
+    padding: 8px 12px;
+    text-align: left;
+  }
+  .result-table th {
+    background: #f5f5f5;
+    font-weight: bold;
+  }
+  .result-table tr:nth-child(even) {
+    background: #f9f9f9;
+  }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const dropZone = document.getElementById('drop-zone');
+  const fileInput = document.getElementById('file-input');
+  const filePreview = document.getElementById('file-preview');
+  const uploadForm = document.getElementById('upload-form');
+  const submitButton = document.getElementById('submit-button');
+  const resetButton = document.getElementById('reset-button');
+  const uploadStatus = document.getElementById('upload-status');
+
+  // 進捗バーの要素を追加
+  const progressContainer = document.createElement('div');
+  progressContainer.id = 'progress-container';
+  progressContainer.style.cssText = `
+    display: none;
+    margin: 2em 0;
+    text-align: center;
+  `;
+  progressContainer.innerHTML = `
+    <div class="progress-bar-container" style="
+      width: 100%;
+      background-color: #e2e8f0;
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 1em;
+    ">
+      <div id="progress-bar" style="
+        width: 0%;
+        height: 20px;
+        background: linear-gradient(90deg, #38b2ac 0%, #4fd1c5 100%);
+        transition: width 0.3s ease;
+        border-radius: 10px;
+      "></div>
+    </div>
+    <div id="progress-text" style="
+      font-size: 0.9em;
+      color: #6c757d;
+      margin-bottom: 1em;
+    ">0%</div>
+    <div id="progress-details" style="
+      font-size: 0.8em;
+      color: #adb5bd;
+    "></div>
+  `;
+  
+  // 進捗バーをupload-statusの後に挿入
+  uploadStatus.parentNode.insertBefore(progressContainer, uploadStatus.nextSibling);
+
+  // Drag and Drop
+  dropZone.addEventListener('dragover', e => {
+    e.preventDefault();
+    dropZone.classList.add('dragover');
+  });
+  dropZone.addEventListener('dragleave', e => {
+    e.preventDefault();
+    dropZone.classList.remove('dragover');
+  });
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('dragover');
+    fileInput.files = e.dataTransfer.files;
+    handleFiles(fileInput.files);
+  });
+  dropZone.addEventListener('click', () => {
+    fileInput.click();
+  });
+  fileInput.addEventListener('change', () => {
+    handleFiles(fileInput.files);
+  });
+  
+  // Handle file selection
+  function handleFiles(files) {
+    filePreview.innerHTML = '';
+    if (files.length > 0) {
+      const file = files[0];
+      const previewItem = document.createElement('div');
+      previewItem.className = 'preview-item';
+      
+      let iconClass = 'fa-file';
+      if (file.type.startsWith('image/')) {
+        iconClass = 'fa-file-image';
+      } else if (file.type === 'application/zip') {
+        iconClass = 'fa-file-archive';
+      }
+      
+      previewItem.innerHTML = `<i class="fas ${iconClass}"></i> <span>${file.name}</span>`;
+      filePreview.appendChild(previewItem);
+    }
+  }
+
+  // 進捗監視関数
+  function updateProgress(jobId) {
+    if (!jobId) return;
+    fetch(`/progress/?job_id=${jobId}`)
+        .then(response => response.json())
+        .then(data => {
+            const progressBar = document.getElementById('progress-bar');
+            const progressText = document.getElementById('progress-text');
+            const progressDetails = document.getElementById('progress-details');
+            if (data.total > 0) {
+                const percentage = Math.round((data.done / data.total) * 100);
+                progressBar.style.width = percentage + '%';
+                progressText.textContent = `${percentage}% (${data.done}/${data.total})`;
+                progressDetails.textContent = '画像を処理中...';
+                if (data.done >= data.total && data.total > 0) {
+                    progressDetails.textContent = '完了しました！';
+                    setTimeout(() => {
+                        progressContainer.style.display = 'none';
+                        uploadStatus.classList.remove('active');
+                        submitButton.disabled = false;
+                        showResults(jobId);
+                    }, 1000);
+                } else {
+                    setTimeout(() => updateProgress(jobId), 1000);
+                }
+            } else {
+                progressDetails.textContent = '処理を開始しています...';
+                setTimeout(() => updateProgress(jobId), 1000);
+            }
+        })
+        .catch(error => {
+            setTimeout(() => updateProgress(jobId), 2000);
+        });
+  }
+
+  // 結果を表示する関数
+  function showResults(jobId) {
+    console.log('showResults called with jobId:', jobId);
+    if (!jobId) {
+        console.log('jobId is empty, returning');
+        return;
+    }
+    
+    const url = `/get-results/?job_id=${jobId}`;
+    console.log('Fetching from URL:', url);
+    
+    fetch(url)
+        .then(response => {
+            console.log('Response status:', response.status);
+            return response.json();
+        })
+        .then(data => {
+            console.log('showResults data:', data);
+            console.log('data.results:', data.results);
+            console.log('data.results.length:', data.results ? data.results.length : 'undefined');
+            
+            const resultsContainer = document.getElementById('results-container');
+            if (!resultsContainer) {
+                console.log('results-container not found');
+                return;
+            }
+
+            if (!data.results || data.results.length === 0) {
+                console.log('No results found, showing empty message');
+                resultsContainer.innerHTML = '<h3>処理結果</h3><p>結果がありません。</p>';
+                return;
+            }
+
+            console.log('Building HTML for results');
+            let html = `
+              <h3>処理結果</h3>
+              <div style="overflow-x:auto;">
+                <table class="result-table">
+                  <thead>
+                    <tr>
+                      <th>ファイル名</th>
+                      <th>ステータス</th>
+                      <th>メッセージ</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+            `;
+
+            data.results.forEach(r => {
+                html += `<tr>
+                    <td>${r.filename}</td>
+                    <td>${r.status}</td>
+                    <td>${r.message}</td>
+                </tr>`;
+            });
+
+            html += `
+                  </tbody>
+                </table>
+              </div>
+            `;
+            resultsContainer.innerHTML = html;
+            console.log('HTML set successfully');
+        })
+        .catch(err => {
+            console.error('Error in showResults:', err);
+            const resultsContainer = document.getElementById('results-container');
+            if (resultsContainer) {
+                resultsContainer.innerHTML = '<h3>処理結果</h3><p>取得に失敗しました。</p>';
+            }
+        });
+  }
+
+  // Ajaxアップロード処理
+  uploadForm.addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    if (!fileInput.files || fileInput.files.length === 0) {
+      alert('ファイルを選択してください');
+      return;
+    }
+
+    // UI状態を更新
+    submitButton.disabled = true;
+    uploadStatus.classList.add('active');
+    progressContainer.style.display = 'block';
+    
+    // 進捗バーをリセット
+    document.getElementById('progress-bar').style.width = '0%';
+    document.getElementById('progress-text').textContent = '0%';
+    document.getElementById('progress-details').textContent = 'アップロード中...';
+
+    // FormDataでファイルを送信
+    const formData = new FormData(uploadForm);
+    
+    // job_idを明示的に追加
+    const jobId = 'job_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    formData.append('job_id', jobId);
+    
+    // ★ job_idをlocalStorageに保存
+    localStorage.setItem('latest_job_id', jobId);
+    
+    console.log('Sending job_id:', jobId); // デバッグ用
+    
+    fetch(uploadForm.action, {
+      method: 'POST',
+      body: formData,
+      headers: {
+        'X-Requested-With': 'XMLHttpRequest'
+      }
+    })
+    .then(response => response.json())
+    .then(data => {
+      console.log('Upload response:', data);
+      
+      if (data.success && data.job_id) {
+        // 進捗監視開始
+        updateProgress(data.job_id);
+      } else if (data.success) {
+        // job_idがない場合は即座に完了として扱う
+        document.getElementById('progress-bar').style.width = '100%';
+        document.getElementById('progress-text').textContent = '100%';
+        document.getElementById('progress-details').textContent = '完了しました！';
+        
+        setTimeout(() => {
+          progressContainer.style.display = 'none';
+          uploadStatus.classList.remove('active');
+          submitButton.disabled = false;
+          location.reload(); // 結果を表示するためページをリロード
+        }, 2000);
+      } else {
+        throw new Error(data.error || 'アップロードに失敗しました');
+      }
+    })
+    .catch(error => {
+      console.error('Upload error:', error);
+      alert('アップロードエラー: ' + error.message);
+      
+      // UI状態をリセット
+      progressContainer.style.display = 'none';
+      uploadStatus.classList.remove('active');
+      submitButton.disabled = false;
+    });
+  });
+
+  // ★ ページロード時にlocalStorageからjob_idを取得して結果を表示
+  const jobId = localStorage.getItem('latest_job_id');
+  if (jobId) {
+    // 進捗が終わっていれば結果だけ表示、進捗中ならupdateProgressを呼ぶ
+    fetch(`/progress/?job_id=${jobId}`)
+      .then(response => response.json())
+      .then(data => {
+        if (data.total > 0 && data.done >= data.total) {
+          showResults(jobId);
+          // 結果を表示したらjob_idを消す
+          localStorage.removeItem('latest_job_id');
+        } else if (data.total > 0 && data.done < data.total) {
+          updateProgress(jobId);
+        }
+      });
+  }
+
+  // より直感的なアップロードボタンの動作
+  submitButton.addEventListener('click', function(e) {
+    if (!fileInput.files || fileInput.files.length === 0) {
+      e.preventDefault();
+      fileInput.click();
+    }
+  });
+  
+  // Reset
+  resetButton.addEventListener('click', function() {
+    filePreview.innerHTML = '';
+    progressContainer.style.display = 'none';
+    uploadStatus.classList.remove('active');
+    submitButton.disabled = false;
+    // ★ ここを追加
+    const resultsContainer = document.getElementById('results-container');
+    if (resultsContainer) {
+        resultsContainer.innerHTML = '';
+    }
+  });
+});
+</script>
+{% endblock %}

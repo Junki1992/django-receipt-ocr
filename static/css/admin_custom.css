@@ -1,0 +1,528 @@
+/* Receiptlyブランド風 Django admin カスタムCSS */
+body, .module, .grp-module {
+  font-family: 'Noto Sans JP', 'Segoe UI', 'Meiryo', sans-serif !important;
+  background: #f6f8fa !important;
+  color: #181f27 !important;
+}
+#header, .module caption, .grp-module caption {
+  background: #1976d2 !important;
+  color: #fff !important;
+}
+a, .grp-navigation a {
+  color: #1976d2 !important;
+  transition: color 0.2s;
+}
+a:hover, .grp-navigation a:hover {
+  color: #1565c0 !important;
+}
+.button, input[type="submit"], .grp-button, .default, .button.default {
+  background: linear-gradient(90deg, #1976d2 0%, #64b5f6 100%) !important;
+  color: #fff !important;
+  border-radius: 0.7em !important;
+  font-weight: bold !important;
+  border: none !important;
+  box-shadow: 0 2px 8px rgba(25,118,210,0.08);
+  transition: background 0.2s;
+}
+.button:hover, input[type="submit"]:hover, .grp-button:hover, .default:hover, .button.default:hover {
+  background: linear-gradient(90deg, #1565c0 0%, #1976d2 100%) !important;
+}
+
+/* OCRテキストカラムを枠いっぱいに改行表示 */
+td.field-short_text {
+  max-width: 600px !important;
+  white-space: pre-wrap !important;
+  overflow: visible !important;
+  text-overflow: unset !important;
+  word-break: break-all !important;
+}
+/* Django admin 右上ユーザーリンクのフォントサイズを大きく */
+#user-tools, .userlinks, .userlinks a, .userlinks span {
+  font-size: 1.15em !important;
+  /* 必要なら太さや色も調整可能 */
+}
+
+/* デフォルトは非表示（PC用） */
+.userlinks-mobile {
+  display: none !important;
+}
+
+/* モバイル時のみ表示 */
+@media (max-width: 600px) {
+  .userlinks-mobile {
+    display: block !important;
+    position: absolute;
+    top: 1.1em;
+    right: 1.1em;
+    z-index: 100;
+  }
+  .userlinks-desktop {
+    display: none !important;
+  }
+}
+
+#burger {
+  background: none;
+  border: none;
+  color: #4fd1c5;
+  cursor: pointer;
+  padding: 5px;
+}
+#burger span {
+  font-size: 2em;
+}
+#user-menu {
+  position: absolute;
+  top: 2.5em;
+  right: 0;
+  background: white;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  border-radius: 4px;
+  padding: 1em;
+  min-width: 200px;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-10px) scale(0.95);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+#user-menu.open {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0) scale(1);
+}
+
+/* メニューの初期状態 */
+.user-menu {
+  opacity: 0;
+  transform: scale(0.95) translateY(-10px);
+  pointer-events: none;
+  transition: opacity 0.25s cubic-bezier(.4,2,.6,1), transform 0.25s cubic-bezier(.4,2,.6,1);
+}
+
+/* メニュー表示時 */
+.user-menu.open {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+  pointer-events: auto;
+}
+
+#burger-icon {
+  width: 1.4em;
+  height: 1.4em;
+  position: relative;
+  display: inline-block;
+  vertical-align: middle;
+}
+#burger-icon .bar {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 0.05em;
+  background: #4fd1c5;
+  border-radius: 2px;
+  transition: all 0.3s cubic-bezier(.4,2,.6,1);
+}
+#burger-icon .bar1 { top: 0.25em; }
+#burger-icon .bar2 { top: 0.42em; }
+#burger-icon .bar3 { top: 0.60em; }
+
+#burger-icon.open .bar1 {
+  transform: translateY(0.16em) rotate(45deg);
+}
+#burger-icon.open .bar2 {
+  opacity: 0;
+  transform: scaleX(0.5);
+}
+#burger-icon.open .bar3 {
+  transform: translateY(-0.16em) rotate(-45deg);
+}
+
+.userlinks-desktop {
+  display: block !important;
+}
+@media (max-width: 600px) {
+  .userlinks-desktop {
+    display: none !important;
+  }
+}
+
+/* ヘッダー全体の背景色 */
+#header, .module h2, .breadcrumbs {
+    background: #4b7c94 !important;  /* 現状の青緑に近い色 */
+}
+
+/* サイトタイトル */
+#site-name {
+    color: #ffe082 !important;        /* 黄色 */
+    font-weight: bold;
+    font-size: 1.3em;
+    letter-spacing: 0.02em;
+}
+
+/* 右側のメニュー */
+#user-tools, .breadcrumbs {
+    color: #fff !important;
+    font-weight: normal;
+}
+
+/* ログアウトだけ黄色 */
+#user-tools a:last-child {
+    color: #ffe082 !important;
+    font-weight: bold;
+}
+
+.custom-header {
+  width: 100vw !important;
+  background: #4b7c94 !important;
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  padding: 0 60px 0 16px !important;
+  height: 56px !important;
+  box-sizing: border-box !important;
+  position: relative !important;
+  z-index: 1000 !important;
+}
+
+.header-left .site-title {
+  color: #ffe082 !important;
+  font-weight: bold !important;
+  font-size: 1.5em !important;
+  letter-spacing: 0.02em !important;
+}
+
+.header-right {
+  display: flex !important;
+  align-items: center !important;
+  gap: 36px !important;
+}
+
+.header-right a {
+  color: #fff !important;
+  font-weight: bold !important;
+  text-decoration: none !important;
+  font-size: 1em !important;
+  transition: color 0.2s !important;
+}
+
+.header-right a.logout {
+  color: #ffe082 !important;
+}
+
+.header-right a:hover {
+  color: #ffe082 !important;
+}
+
+.header-underline {
+  position: absolute !important;
+  left: 0 !important;
+  bottom: -3px !important;
+  width: 100vw !important;
+  height: 3px !important;
+  background: #1976d2 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  display: block !important;
+  z-index: 1001 !important;
+  content: '';
+}
+
+/* 管理画面のテーブルカラム幅を制限 */
+/*
+.change-list table td, .change-list table th {
+  max-width: 200px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+*/
+
+/* OCRテキストカラムだけ幅をさらに狭く */
+/*
+td.field-short_text {
+  max-width: 300px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+*/
+
+/* OCRテキストの全文表示エリアにスクロールを付与 */
+.field-text .readonly {
+  max-height: 200px;   /* 必要に応じて高さ調整 */
+  overflow: auto;
+  white-space: pre-wrap; /* 改行も反映 */
+  font-family: inherit;
+  background: #f8fafb;
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+
+#result_list th.column-short_text,
+#result_list td.field-short_text {
+  max-width: 300px !important;
+  width: 300px !important;
+  white-space: pre-wrap !important;
+  overflow-wrap: break-word !important;
+  word-break: break-all !important;
+  background: none !important;
+}
+#result_list {
+  table-layout: fixed !important;
+  width: 100% !important;
+}
+
+html body #result_list th.column-short_text,
+html body #result_list td.field-short_text {
+  max-width: 300px !important;
+  width: 300px !important;
+  white-space: pre-wrap !important;
+  overflow-wrap: break-word !important;
+  word-break: break-all !important;
+  background: none !important;
+}
+
+/* --- リスト画面 --- */
+#result_list th, #result_list td {
+  padding: 16px 10px !important;
+  font-size: 1.08em;
+  vertical-align: middle !important;
+}
+#result_list tr:hover {
+  background: #e3f2fd !important;
+  transition: background 0.2s;
+}
+td.field-image_tag img {
+  display: block;
+  margin: 0 auto;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(25,118,210,0.10);
+  width: 90px !important;
+  height: 150px !important;
+  object-fit: cover;
+}
+td.field-short_text b {
+  color: #1976d2;
+  font-size: 1.1em;
+}
+td.field-short_text {
+  max-width: 340px !important;
+  white-space: pre-wrap !important;
+  overflow-wrap: break-word !important;
+  word-break: break-all !important;
+  background: #fff !important;
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(25,118,210,0.04);
+  padding: 12px 14px !important;
+}
+
+/* --- 詳細画面 --- */
+.field-text .readonly, .readonly {
+  font-size: 1.13em;
+  background: #f8fafb;
+  border-radius: 12px;
+  padding: 18px 24px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 8px rgba(25,118,210,0.06);
+}
+
+/* --- ダッシュボード風トップ --- */
+.dashboard-summary {
+  display: flex;
+  gap: 32px;
+  margin: 32px 0 24px 0;
+  flex-wrap: wrap;
+}
+.dashboard-card {
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 2px 12px rgba(25,118,210,0.10);
+  padding: 24px 32px;
+  min-width: 220px;
+  text-align: center;
+  font-size: 1.18em;
+  color: #1976d2;
+  font-weight: bold;
+}
+
+/* --- ページネーション・フィルタ --- */
+.paginator, .paginator a, .paginator span, .changelist-filter, .changelist-filter li, .changelist-filter h3 {
+  font-size: 1.08em !important;
+  border-radius: 6px;
+}
+.paginator a, .paginator span {
+  padding: 4px 10px;
+  margin: 0 2px;
+  background: #e3f2fd;
+  color: #1976d2;
+  border-radius: 6px;
+  text-decoration: none;
+}
+.paginator .end, .paginator .current {
+  background: #1976d2;
+  color: #fff;
+}
+
+/* --- スマホ対応 --- */
+@media (max-width: 800px) {
+  #result_list th, #result_list td {
+    font-size: 0.98em;
+    padding: 10px 4px !important;
+  }
+  td.field-image_tag img {
+    width: 60px !important;
+    height: 100px !important;
+  }
+  td.field-short_text {
+    max-width: 98vw !important;
+    padding: 8px 4px !important;
+  }
+  .dashboard-summary {
+    flex-direction: column;
+    gap: 16px;
+  }
+  .dashboard-card {
+    min-width: 0;
+    padding: 14px 8px;
+    font-size: 1em;
+  }
+}
+
+/* --- サイトタイトル・ヘッダー --- */
+#site-name {
+  color: #ffe082 !important;
+  font-weight: bold;
+  font-size: 1.4em;
+  letter-spacing: 0.02em;
+}
+#user-tools, .breadcrumbs {
+  color: #fff !important;
+  font-weight: normal;
+}
+#user-tools a:last-child {
+  color: #ffe082 !important;
+  font-weight: bold;
+}
+
+/* --- ボタン・リンク --- */
+.button, input[type="submit"], .grp-button, .default, .button.default {
+  font-size: 1.08em !important;
+  padding: 8px 18px !important;
+  border-radius: 0.7em !important;
+  margin: 2px 0;
+}
+
+/* --- その他微調整 --- */
+.change-list table {
+  table-layout: fixed !important;
+  width: 100% !important;
+}
+
+/* --- グラフやサマリ用 --- */
+.chart-container {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(25,118,210,0.08);
+  padding: 18px 20px;
+  margin-bottom: 24px;
+}
+
+/* --- ツールチップ --- */
+.tooltip {
+  position: relative;
+  display: inline-block;
+  cursor: pointer;
+}
+.tooltip .tooltiptext {
+  visibility: hidden;
+  width: 120px;
+  background-color: #1976d2;
+  color: #fff;
+  text-align: center;
+  border-radius: 6px;
+  padding: 6px 0;
+  position: absolute;
+  z-index: 1;
+  bottom: 125%;
+  left: 50%;
+  margin-left: -60px;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.tooltip:hover .tooltiptext {
+  visibility: visible;
+  opacity: 1;
+}
+
+/* --- ダッシュボード用CSSを統合 --- */
+.dashboard td, .dashboard th {
+    word-break: break-word;
+}
+.dashboard .module table th {
+    width: 100%;
+}
+.dashboard .module table td {
+    white-space: nowrap;
+}
+.dashboard .module table td a {
+    display: block;
+    padding-right: .6em;
+}
+.module ul.actionlist {
+    margin-left: 0;
+}
+ul.actionlist li {
+    list-style-type: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Django標準ヘッダーを非表示 */
+#header, #site-name, .breadcrumbs {
+  display: none !important;
+}
+
+html, body {
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow-x: visible !important;
+}
+
+/* OCRテキスト（整形）欄の各値の間に余白 */
+td.field-short_text .ocr-row {
+  margin-bottom: 6px;
+  line-height: 1.7;
+}
+
+.admin-dashboard-welcome {
+  background: #e0f7fa;
+  border-radius: 1em;
+  padding: 2em 1em;
+  margin: 2em auto;
+  max-width: 600px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(56,178,172,0.08);
+}
+.admin-logo {
+  width: 80px;
+  margin-bottom: 1em;
+}
+.admin-btn {
+  display: inline-block;
+  background: #4fd1c5;
+  color: #fff;
+  padding: 0.7em 1.5em;
+  border-radius: 0.7em;
+  margin: 0.5em;
+  font-weight: bold;
+  text-decoration: none;
+  transition: background 0.2s;
+}
+.admin-btn:hover {
+  background: #38b2ac;
+}
+.admin-help {
+  margin-top: 1.5em;
+  font-size: 0.95em;
+}

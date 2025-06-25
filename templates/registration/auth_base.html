@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}領収書管理システム{% endblock %}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+    {% block extrastyle %}{% endblock %}
+</head>
+<body>
+    <div id="container">
+        {% block main_content %}
+            <div class="main" id="main">
+                {% block content %}{% endblock %}
+            </div>
+        {% endblock main_content %}
+        
+        <footer class="footer">
+            <p>© 2025 My Receipt Manager. All rights reserved.</p>
+            <p>
+                <a href="{% url 'privacy' %}">プライバシーポリシー</a> |
+                <a href="{% url 'terms' %}">利用規約</a>
+            </p>
+        </footer>
+    </div>
+    {% block extra_js %}{% endblock %}
+</body>
+</html> 

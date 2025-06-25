@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block content %}
+  <h1>領収書登録</h1>
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    <table>
+      {{ form.as_table }}
+    </table>
+    <button type="submit">登録する</button>
+  </form>
+  <a href="{% url 'dashboard_receipts' %}">一覧に戻る</a>
+{% endblock %}

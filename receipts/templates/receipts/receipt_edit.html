@@ -1,0 +1,340 @@
+{% extends "base.html" %}
+{% load static %}
+{% load humanize %}
+
+{% block content %}
+<style>
+    .edit-container {
+      max-width: 900px;
+      margin: 2em auto;
+      background: #fff;
+      border-radius: 1em;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+      padding: 2em 2.5em;
+    }
+    .edit-container h1 {
+      text-align: center;
+      margin-bottom: 1.5em;
+      font-size: 1.5em;
+      color: #38b2ac;
+      letter-spacing: 0.05em;
+    }
+    .edit-flex {
+      display: flex;
+      gap: 2em;
+      align-items: flex-start;
+    }
+    .edit-form {
+      flex: 1 1 0;
+      max-width: 400px;
+    }
+    .form-section {
+      margin-bottom: 2em;
+      padding-bottom: 1em;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .form-section:last-child {
+      border-bottom: none;
+    }
+    .form-row {
+      display: flex !important;
+      flex-direction: column !important;
+      margin-bottom: 1.2em !important;
+    }
+    .form-row label {
+      font-weight: bold !important;
+      color: #333 !important;
+      margin-bottom: 0.3em !important;
+      font-size: 1em !important;
+    }
+    .form-row input,
+    .form-row select,
+    .form-row textarea {
+      width: 100%;
+      min-height: 2.5em;
+      box-sizing: border-box;
+      padding: 0.7em;
+      border: 1px solid #cbd5e1;
+      border-radius: 0.5em;
+      font-size: 1em;
+      background: #f8fafc;
+      transition: border 0.2s;
+      line-height: 1.4;
+    }
+    .form-row input:focus,
+    .form-row select:focus,
+    .form-row textarea:focus {
+      border: 1.5px solid #4fd1c5;
+      outline: none;
+      background: #fff;
+    }
+    .form-row select {
+      height: 44px;
+      padding: 0 0.7em;
+      font-size: 1em;
+      line-height: 1.4;
+      background: #f8fafc;
+      border-radius: 0.5em;
+      border: 1px solid #cbd5e1;
+      box-sizing: border-box;
+    }
+    .image-side {
+      flex: 1 1 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-top: 2.5em;
+    }
+    .preview-img {
+      max-width: 100%;
+      width: 300px;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 0.5em;
+      background: #f8fafc;
+      box-shadow: 0 1px 4px rgba(56,178,172,0.08);
+    }
+    .file-name {
+      font-size: 0.9em;
+      color: #666;
+      margin-bottom: 0.7em;
+    }
+    .form-actions {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 1em;
+      margin-top: 2em;
+      flex-wrap: nowrap;
+    }
+    .form-actions button, .form-actions a {
+      flex: 0 0 140px;
+      min-width: 120px;
+      max-width: 140px;
+      width: 140px;
+      padding: 0.4em 0;
+      font-size: 0.98em;
+      border-radius: 0.5em;
+      font-weight: bold;
+      text-align: center;
+      margin: 0;
+      box-sizing: border-box;
+      letter-spacing: 0.05em;
+      transition: background 0.2s, color 0.2s;
+      border: 2px solid #4fd1c5;
+      background: #fff;
+      color: #38b2ac;
+    }
+    .form-actions button.btn-primary {
+      background: #4fd1c5;
+      color: #fff;
+      border: 2px solid #4fd1c5;
+    }
+    .form-actions button.btn-primary:hover {
+      background: #38b2ac;
+      color: #fff;
+    }
+    .form-actions button.btn-secondary, .form-actions a.btn-secondary {
+      background: #f8f9fa;
+      color: #38b2ac;
+      border: 2px solid #4fd1c5;
+    }
+    .form-actions button.btn-secondary:hover, .form-actions a.btn-secondary:hover {
+      background: #e0f7fa;
+      color: #38b2ac;
+    }
+    @media (max-width: 900px) {
+      .edit-flex {
+        flex-direction: column;
+        gap: 0;
+      }
+      .edit-form, .image-side {
+        max-width: 100%;
+        width: 100%;
+      }
+      .preview-img {
+        width: 100%;
+        max-width: 300px;
+      }
+    }
+    @media (max-width: 600px) {
+      .form-actions {
+        flex-direction: column;
+        gap: 0.7em;
+      }
+      .form-actions button, .form-actions a {
+        min-width: 0;
+        width: 100%;
+        max-width: 100%;
+      }
+    }
+    .price-protected {
+      background: #f8fafc;
+      border: 1.5px solid #e2e8f0;
+      color: #888;
+      cursor: not-allowed;
+    }
+    .price-editable {
+      background: #fffbe7;
+      border: 2px solid #38b2ac;
+      color: #222;
+      cursor: text;
+    }
+    input[readonly] {
+      background: #f8fafc !important;
+      color: #222 !important;
+      opacity: 1 !important;
+      border: 1px solid #cbd5e1 !important;
+    }
+    </style>
+    
+<div class="edit-container">
+  <h1>レシート編集</h1>
+  
+  {% if messages %}
+    <div class="messages">
+      {% for message in messages %}
+        <div class="message {{ message.tags }}">
+          {{ message }}
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+  
+  <div class="edit-flex">
+    <form method="post" enctype="multipart/form-data" class="edit-form">
+      {% csrf_token %}
+      <div class="form-row">
+        <label for="user">ユーザー</label>
+        <select name="user" id="user" required>
+          {% for user in users %}
+            <option value="{{ user.id }}" {% if user.id == receipt.user.id %}selected{% endif %}>{{ user.username }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-row">
+        <label for="category">カテゴリ</label>
+        <select name="category" id="category">
+          {% for category in categories %}
+            <option value="{{ category }}" {% if category == receipt.category %}selected{% endif %}>{{ category }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-row">
+        <label for="shop_name">店舗名</label>
+        <input type="text" name="shop_name" id="shop_name" value="{{ receipt.shop_name|default:'' }}">
+      </div>
+      <div class="form-row">
+        <label for="store_name">店舗名（詳細）</label>
+        <input type="text" name="store_name" id="store_name" value="{{ receipt.store_name|default:'' }}">
+      </div>
+      <div class="form-row">
+        <label for="memo">メモ</label>
+        <textarea name="memo" id="memo" rows="2">{{ receipt.memo|default:'' }}</textarea>
+      </div>
+      <div class="form-row">
+        <label for="text">OCRテキスト</label>
+        <textarea name="text" id="text" rows="7">{{ receipt.text|default:'' }}</textarea>
+      </div>
+      <div class="form-row">
+        <label for="file">画像ファイル</label>
+        <input type="file" name="file" id="file" accept="image/*">
+      </div>
+      <div class="form-row">
+        <label for="id_issue_date">発行日</label>
+        <input type="date" name="issue_date" id="id_issue_date" value="{{ receipt.issue_date|date:'Y-m-d' }}">
+      </div>
+      <div class="form-row">
+        <label>商品明細（編集可）</label>
+        {% for item in receipt.product_items.all %}
+          <div style="border:1px solid #e2e8f0; border-radius:0.5em; padding:0.7em; margin-bottom:0.7em; display:flex; align-items:center; gap:1em;">
+            <div style="flex:1;">
+              <label>商品名</label>
+              <input type="text" name="product_name_{{ item.id }}" value="{{ item.name }}" style="margin-bottom:0.3em;">
+              <label>金額</label>
+              <div style="display:flex; align-items:center; gap:0.5em;">
+                <input type="number" name="product_price_{{ item.id }}" value="{{ item.price }}" min="0" style="width:120px;">
+                <span style="color:#666; font-size:0.9em;">（¥{{ item.price|intcomma }}）</span>
+              </div>
+            </div>
+          </div>
+        {% empty %}
+          <div style="color:#888;">商品明細はありません</div>
+        {% endfor %}
+      </div>
+      <div class="form-actions" style="max-width:900px; margin:2em auto 0 auto; flex-direction: column; align-items: center;">
+        <div class="form-row" style="margin-bottom: 1.2em; flex-direction: column; align-items: flex-start; width: 100%;">
+          <label for="total_amount">合計金額</label>
+          <div style="display: flex; align-items: center; gap: 0.7em;">
+            <input type="number" name="total_amount" id="total_amount" value="{{ total_amount }}" min="0" style="width:120px;" readonly>
+            <span style="color:#666; font-size:0.9em;">（表示：¥{{ total_amount|intcomma }}）</span>
+            <input type="hidden" name="total_amount_locked" id="total_amount_locked" value="1">
+            <span id="lock-toggle" style="cursor:pointer; color:#38b2ac; font-size:1.5em;" title="編集">
+              <!-- ロックアイコン（デフォルト） -->
+              <svg id="lock-icon" xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none"><path d="M7 11V7a5 5 0 0 1 10 0v4" stroke="#38b2ac" stroke-width="2"/><rect x="5" y="11" width="14" height="10" rx="2" stroke="#38b2ac" stroke-width="2"/><circle cx="12" cy="16" r="1.5" fill="#38b2ac"/></svg>
+              <!-- アンロックアイコン（非表示） -->
+              <svg id="unlock-icon" style="display:none;" xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none"><path d="M17 11V7a5 5 0 0 0-9.9-1" stroke="#38b2ac" stroke-width="2"/><rect x="5" y="11" width="14" height="10" rx="2" stroke="#38b2ac" stroke-width="2"/><circle cx="12" cy="16" r="1.5" fill="#38b2ac"/></svg>
+            </span>
+          </div>
+        </div>
+        <script>
+        document.addEventListener('DOMContentLoaded', function() {
+          const input = document.getElementById('total_amount');
+          const lock = document.getElementById('lock-icon');
+          const unlock = document.getElementById('unlock-icon');
+          const lockToggle = document.getElementById('lock-toggle');
+          const hiddenLock = document.getElementById('total_amount_locked');
+          lockToggle.addEventListener('click', function() {
+            if (input.readOnly) {
+              input.readOnly = false;
+              lock.style.display = 'none';
+              unlock.style.display = '';
+              input.focus();
+              hiddenLock.value = '0';
+            } else {
+              input.readOnly = true;
+              lock.style.display = '';
+              unlock.style.display = 'none';
+              hiddenLock.value = '1';
+            }
+          });
+        });
+        </script>
+        <div style="display: flex; gap: 1em; justify-content: center; width: 100%;">
+          <button type="submit" class="btn btn-primary" name="update" value="1">更新</button>
+          <a href="{% url 'dashboard_receipts' %}" class="btn btn-secondary">キャンセル</a>
+        </div>
+      </div>
+    </form>
+    <div class="image-side">
+      {% if receipt.file %}
+        <img id="receipt-image" src="{{ receipt.file.url }}" alt="領収書画像" style="max-width: 400px !important; width: 100%; height: auto; cursor: pointer;">
+        <div class="file-name">{{ receipt.file.name }}</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- モーダル本体（画像の下あたりに追加） -->
+<div id="image-modal" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.7); align-items:center; justify-content:center;">
+  <img id="modal-img" src="" style="max-width:90vw; max-height:90vh; box-shadow:0 0 20px #000;">
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const img = document.getElementById('receipt-image');
+  const modal = document.getElementById('image-modal');
+  const modalImg = document.getElementById('modal-img');
+  if (img && modal && modalImg) {
+    img.addEventListener('click', function() {
+      modalImg.src = img.src;
+      modal.style.display = 'flex';
+    });
+    modal.addEventListener('click', function() {
+      modal.style.display = 'none';
+      modalImg.src = '';
+    });
+  }
+});
+</script>
+{% endblock %}
+

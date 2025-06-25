@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block content %}
+  <h1>領収書一覧</h1>
+  <table>
+    <thead>
+      <tr>
+        <th>発行日</th>
+        <th>領収書</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for receipt in receipts %}
+        <tr>
+          <td>{{ receipt.issue_date|default:"-" }}</td>
+          <td>{{ receipt }}</td>
+        </tr>
+      {% empty %}
+        <tr>
+          <td colspan="2">領収書がありません</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <a href="{% url 'receipt_create' %}">新規登録</a>
+{% endblock %}

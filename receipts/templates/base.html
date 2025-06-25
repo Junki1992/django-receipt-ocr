@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="ja">
+{% load static %}
+<head>
+  <meta charset="UTF-8">
+  <title>{% block title %}領収書管理システム{% endblock %}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" type="text/css" href="{% static 'admin/css/base.css' %}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  {% block extrastyle %}{% endblock %}
+
+  <style>
+    .messages {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      width: 100%;
+    }
+    .messages li {
+      padding: 15px 20px;
+      margin-bottom: 1em;
+      border-radius: 8px;
+      color: #fff;
+      font-weight: bold;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+    .messages li.success {
+      background-color: #28a745;
+    }
+    .messages li.error {
+      background-color: #dc3545;
+    }
+    .messages li.warning {
+      background-color: #ffc107;
+      color: #333;
+    }
+    .messages li.info {
+      background-color: #17a2b8;
+    }
+
+    html, body, .main, .container, .userlinks-mobile {
+      overflow: visible !important;
+      position: static !important;
+      z-index: auto !important;
+    }
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      overflow-x: hidden;
+    }
+    body {
+      min-height: 100vh;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    #container {
+      min-height: 100vh;
+      min-width: 100vw;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    .main {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2em 1em;
+      background: #fff;
+      border-radius: 1.2em;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+      box-sizing: border-box;
+    }
+    .footer {
+      background: #2c3e50;
+      color: #fff;
+      text-align: center;
+      padding: 1em 0 0.5em 0;
+      margin-top: 0;
+      position: static;
+    }
+    .footer a {
+      color: #4fd1c5;
+      text-decoration: none;
+      margin: 0 0.5em;
+    }
+    .footer a:hover {
+      text-decoration: underline;
+    }
+    .button,
+    button {
+      background: linear-gradient(90deg, #38b2ac 0%, #4fd1c5 100%);
+      color: #fff;
+      border: none;
+      border-radius: 0.7em;
+      padding: 0.9em 2em;
+      font-size: 1.1em;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(79,209,197,0.10);
+      transition: background 0.2s, transform 0.1s;
+      margin: 0.2em;
+      outline: none;
+    }
+    .button:hover,
+    button:hover {
+      background: linear-gradient(90deg, #11998e 0%, #38b2ac 100%);
+      transform: translateY(-2px) scale(1.04);
+      box-shadow: 0 6px 24px rgba(56,178,172,0.18);
+    }
+    button[type="reset"], .button-sub {
+      background: #e2e8f0;
+      color: #38b2ac;
+      border: 1.5px solid #38b2ac;
+    }
+    button[type="reset"]:hover, .button-sub:hover {
+      background: #38b2ac;
+      color: #fff;
+    }
+    @media (max-width: 900px) {
+      .container {
+        max-width: 98vw;
+        padding: 1em 0.5em;
+      }
+      .dashboard-container {
+        padding: 1em 0.2em;
+    }
+      .dashboard-container table {
+        min-width: 600px;
+        font-size: 0.95em;
+      }
+    }
+    @media (max-width: 600px) {
+      body .main .container {
+        max-width: 100% !important;
+        margin: 0 !important;
+      }
+      .main {
+        max-width: 100% !important;
+        min-width: 100% !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        display: block !important;
+        align-items: stretch !important;
+        justify-content: flex-start !important;
+      }
+      body, html {
+        width: 100% !important;
+        min-width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow-x: hidden !important;
+        background: #fff !important;
+      }
+      .dataTables_wrapper {
+        width: 100% !important;
+        min-width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        box-sizing: border-box !important;
+      }
+      table, .dashboard-container table, #details-table {
+        width: 100% !important;
+        min-width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        box-sizing: border-box !important;
+      }
+      .dashboard-container {
+        padding: 0.5em 0.1em;
+      }
+      .table-responsive {
+        padding-bottom: 1em;
+      }
+      .dashboard-container table {
+        min-width: 500px;
+        font-size: 0.9em;
+      }
+      html, body, .main, .container, .dashboard-container, .dataTables_wrapper {
+        width: 100% !important;
+        min-width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        background: #fff !important;
+        box-sizing: border-box !important;
+      }
+      table, .dashboard-container table, #details-table {
+        min-width: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        background: #fff !important;
+        box-sizing: border-box !important;
+      }
+      th, td {
+        min-width: 0 !important;
+        padding-left: 0.1em !important;
+        padding-right: 0.1em !important;
+      }
+    }
+    @media (max-width: 600px) {
+      html, body, .main, .container, .dashboard-container, .dataTables_wrapper {
+        width: 100% !important;
+        min-width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        background: #fff !important;
+        box-sizing: border-box !important;
+      }
+      table, .dashboard-container table, #details-table {
+        min-width: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        background: #fff !important;
+        box-sizing: border-box !important;
+      }
+    }
+    #branding h1 {
+      font-size: 1.5em;
+      margin: 0;
+      font-weight: bold;
+      color: #ffc;
+    }
+    #branding h1 a {
+      color: #ffc;
+      text-decoration: none;
+    }
+    #user-tools {
+      color: #ffc;
+      font-size: 1em;
+      display: flex;
+      align-items: center;
+      gap: 1em;
+      flex-wrap: wrap;
+    }
+    #user-tools a {
+      color: #ffc;
+      text-decoration: none;
+      margin-left: 1em;
+    }
+    #user-tools a:hover {
+      text-decoration: underline;
+    }
+    .dashboard-container {
+      width: 100%;
+      padding: 1.5em 0.5em;
+      margin-bottom: 2em;
+      box-sizing: border-box;
+    }
+    .section-title,
+    .dashboard-container > h1,
+    .dashboard-container > h2,
+    .dashboard-container > table,
+    .dashboard-container > .chart-switcher,
+    .dashboard-container > .chart-area {
+      margin-bottom: 1.5em;
+    }
+    .table-responsive {
+      width: 100%;
+      overflow-x: auto;
+      margin-bottom: 2em;
+    }
+    .dashboard-container table {
+      min-width: 700px;
+      width: 100%;
+      table-layout: auto;
+    }
+    /* 共通ボタンスタイル */
+    .button, button, .btn {
+      background: linear-gradient(90deg, #38b2ac 0%, #4fd1c5 100%);
+      color: #fff;
+      border: none;
+      border-radius: 0.7em;
+      padding: 0.9em 2em;
+      font-size: 1.1em;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(79,209,197,0.10);
+      transition: background 0.2s, transform 0.1s;
+      margin: 0.2em;
+      outline: none;
+    }
+    .button:hover, button:hover, .btn:hover {
+      background: linear-gradient(90deg, #11998e 0%, #38b2ac 100%);
+      transform: translateY(-2px) scale(1.04);
+      box-shadow: 0 6px 24px rgba(56,178,172,0.18);
+    }
+    button[type="reset"], .button-sub {
+      background: #e2e8f0;
+      color: #38b2ac;
+      border: 1.5px solid #38b2ac;
+    }
+    button[type="reset"]:hover, .button-sub:hover {
+      background: #38b2ac;
+      color: #fff;
+    }
+    /* 共通テーブルスタイル */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 1.5em;
+      background: #fff;
+      border-radius: 0.8em;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(56,178,172,0.08);
+    }
+    th, td {
+      padding: 0.8em 0.5em;
+      text-align: center;
+      border-bottom: 1.5px solid #e2e8f0;
+      font-size: 1em;
+      white-space: nowrap;
+      min-width: 100px;
+    }
+    th {
+      background: linear-gradient(90deg, #38b2ac 0%, #4fd1c5 100%);
+      color: #fff;
+      font-weight: bold;
+      border: none;
+      letter-spacing: 0.03em;
+      padding: 1.2em 0.7em;
+    }
+    tr:last-child td {
+      border-bottom: none;
+    }
+    /* バッジ類 */
+    .amount-badge {
+      background: #4fd1c5;
+      color: #fff;
+      border-radius: 1em;
+      padding: 0.2em 0.8em;
+      font-weight: bold;
+      font-size: 1em;
+      display: inline-block;
+      letter-spacing: 0.02em;
+    }
+    .category-badge {
+      background: #e6fffa;
+      color: #319795;
+      border-radius: 1em;
+      padding: 0.2em 0.8em;
+      font-size: 0.95em;
+      display: inline-block;
+      letter-spacing: 0.02em;
+    }
+    .dashboard-container > * {
+      width: 100%;
+      box-sizing: border-box;
+    }
+    .dashboard-container .chart-switcher {
+      width: 100%;
+      justify-content: center;
+    }
+    .dashboard-container table {
+      width: 100%;
+    }
+    #header {
+      min-height: 60px;
+      padding: 18px 32px !important;
+      align-items: center;
+      display: flex;
+      position: relative;
+      z-index: 1;
+    }
+    @media (max-width: 700px) {
+      #header {
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        height: 56px !important;
+        padding: 0 8px !important;
+        position: relative;
+      }
+      #branding {
+        margin-bottom: 0 !important;
+        flex: 1 1 auto;
+      }
+      .userlinks-desktop {
+        display: none !important;
+      }
+      .userlinks-mobile {
+        display: flex !important;
+        align-items: center;
+        justify-content: flex-end;
+        position: static;
+        margin: 0;
+        z-index: 1100;
+        height: 100%;
+      }
+      #burger {
+        background: none;
+        border: none;
+        color: #4fd1c5;
+        cursor: pointer;
+        padding: 12px;
+        margin-right: 2px;
+        width: 48px;
+        height: 48px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      #burger-icon {
+        width: 2.2em;
+        height: 2.2em;
+        position: relative;
+        display: inline-block;
+        vertical-align: middle;
+      }
+      #burger-icon .bar {
+        position: absolute;
+        left: 0;
+        width: 100%;
+        height: 0.22em;
+        background: #4fd1c5;
+        border-radius: 2px;
+        transition: all 0.3s cubic-bezier(.4,2,.6,1);
+      }
+      #burger-icon .bar1 { top: 0.4em; }
+      #burger-icon .bar2 { top: 1.0em; }
+      #burger-icon .bar3 { top: 1.6em; }
+      #burger-icon.open .bar1 {
+        transform: translateY(0.6em) rotate(45deg);
+      }
+      #burger-icon.open .bar2 {
+        opacity: 0;
+        transform: scaleX(0.5);
+      }
+      #burger-icon.open .bar3 {
+        transform: translateY(-0.6em) rotate(-45deg);
+      }
+      #user-menu {
+        position: fixed;
+        top: 56px;
+        right: 8px;
+        z-index: 99999;
+        background: #fff;
+        box-shadow: 0 2px 8px rgba(44,62,80,0.13);
+        border-radius: 8px;
+        padding: 1em 1.2em;
+        min-width: 160px;
+        opacity: 0;
+        visibility: hidden;
+        transform: translateY(-10px);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      #user-menu.open {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0);
+        display: block !important;
+      }
+      #user-menu .nav-link, #user-menu button {
+        color: #38b2ac !important;
+        display: block;
+        margin-bottom: 0.7em;
+        text-decoration: none;
+        font-size: 1.1em;
+        background: none;
+        border: none;
+        text-align: left;
+      }
+      #user-menu .nav-link:last-child, #user-menu button:last-child {
+        margin-bottom: 0;
+      }
+      #user-menu .nav-link.logout, #user-menu button.logout {
+        color: #e57373 !important;
+      }
+    }
+    @media (min-width: 701px) {
+      .userlinks-mobile {
+        display: none !important;
+      }
+      .userlinks-desktop {
+        display: flex !important;
+      }
+    }
+    #header {
+      position: relative;
+    }
+    #user-menu {
+      display: none;
+      opacity: 0;
+      visibility: hidden;
+    }
+    #user-menu.open {
+      display: block !important;
+      opacity: 1 !important;
+      visibility: visible !important;
+      transform: translateY(0) !important;
+    }
+    {% block extra_css %}{% endblock %}
+  </style>
+</head>
+<body class="{% block bodyclass %}{% endblock %}">
+  {% include 'includes/header.html' %}
+  
+  {% if messages %}
+  <ul class="messages">
+      {% for message in messages %}
+      <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
+      {% endfor %}
+  </ul>
+  {% endif %}
+
+  <div id="container">
+    <div class="main">
+      <div class="container">
+        {% block content %}{% endblock %}
+      </div>
+    </div>
+
+    <div id="footer" class="footer">
+      <p>&copy; 2025 My Receipt Manager. All rights reserved.</p>
+       <p>
+           <a href="{% url 'privacy' %}">プライバシーポリシー</a> |
+           <a href="{% url 'terms' %}">利用規約</a>
+       </p>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const burger = document.getElementById('burger');
+      const menu = document.getElementById('user-menu');
+      const icon = document.getElementById('burger-icon');
+      if (burger && menu && icon) {
+        burger.addEventListener('click', function(e) {
+          e.stopPropagation();
+          menu.classList.toggle('open');
+          icon.classList.toggle('open');
+        });
+        document.addEventListener('click', function(e) {
+          if (!menu.contains(e.target) && !burger.contains(e.target)) {
+            menu.classList.remove('open');
+            icon.classList.remove('open');
+          }
+        });
+      }
+    });
+  </script>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

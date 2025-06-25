@@ -1,0 +1,194 @@
+{% extends "base.html" %}
+
+{% block title %}サインアップ - Receiptly{% endblock %}
+
+{% block content %}
+<div class="signup-container">
+    <h1>アカウント作成</h1>
+    
+    <form method="post" class="signup-form">
+        {% csrf_token %}
+        
+        {% if form.errors %}
+        <div class="error-message">
+            <p>入力内容にエラーがあります。以下をご確認ください：</p>
+            <ul>
+                {% for field in form %}
+                    {% for error in field.errors %}
+                        <li>{{ field.label }}: {{ error }}</li>
+                    {% endfor %}
+                {% endfor %}
+                {% for error in form.non_field_errors %}
+                    <li>{{ error }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+        
+        <div class="form-group">
+            <label for="{{ form.username.id_for_label }}">{{ form.username.label }}</label>
+            {{ form.username }}
+            {% if form.username.help_text %}
+                <small class="help-text">{{ form.username.help_text|safe }}</small>
+            {% endif %}
+        </div>
+        
+        <div class="form-group">
+            <label for="{{ form.email.id_for_label }}">{{ form.email.label }}</label>
+            {{ form.email }}
+            {% if form.email.help_text %}
+                <small class="help-text">{{ form.email.help_text }}</small>
+            {% endif %}
+        </div>
+        
+        <div class="form-group">
+            <label for="{{ form.password1.id_for_label }}">{{ form.password1.label }}</label>
+            {{ form.password1 }}
+            {% if form.password1.help_text %}
+                <small class="help-text">{{ form.password1.help_text|safe }}</small>
+            {% endif %}
+        </div>
+        
+        <div class="form-group">
+            <label for="{{ form.password2.id_for_label }}">{{ form.password2.label }}</label>
+            {{ form.password2 }}
+            {% if form.password2.help_text %}
+                <small class="help-text">{{ form.password2.help_text }}</small>
+            {% endif %}
+        </div>
+        
+        <div class="form-actions">
+            <button type="submit" class="button">アカウント作成</button>
+        </div>
+    </form>
+    
+    <div class="login-link">
+        <p>すでにアカウントをお持ちですか？ <a href="{% url 'login' %}">ログイン</a></p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .signup-container {
+        max-width: 500px;
+        margin: 0 auto;
+        padding: 2em;
+    }
+    
+    .signup-container h1 {
+        text-align: center;
+        color: #2c3e50;
+        margin-bottom: 1.5em;
+        font-size: 2em;
+    }
+    
+    .signup-form {
+        background: #fff;
+        padding: 2em;
+        border-radius: 1em;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+    }
+    
+    .form-group {
+        margin-bottom: 1.5em;
+    }
+    
+    .form-group label {
+        display: block;
+        margin-bottom: 0.5em;
+        font-weight: bold;
+        color: #2c3e50;
+    }
+    
+    .form-group input {
+        width: 100%;
+        padding: 0.8em;
+        border: 2px solid #e2e8f0;
+        border-radius: 0.5em;
+        font-size: 1em;
+        transition: border-color 0.3s;
+        box-sizing: border-box;
+    }
+    
+    .form-group input:focus {
+        outline: none;
+        border-color: #38b2ac;
+        box-shadow: 0 0 0 3px rgba(56,178,172,0.1);
+    }
+    
+    .help-text {
+        display: block;
+        margin-top: 0.5em;
+        font-size: 0.9em;
+        color: #666;
+        line-height: 1.4;
+    }
+    
+    .help-text ul {
+        margin: 0.5em 0;
+        padding-left: 1.5em;
+    }
+    
+    .help-text li {
+        margin-bottom: 0.3em;
+    }
+    
+    .error-message {
+        background: #fed7d7;
+        color: #c53030;
+        padding: 1em;
+        border-radius: 0.5em;
+        margin-bottom: 1.5em;
+        border: 1px solid #feb2b2;
+    }
+    
+    .error-message ul {
+        margin: 0.5em 0;
+        padding-left: 1.5em;
+    }
+    
+    .form-actions {
+        text-align: center;
+        margin-top: 2em;
+    }
+    
+    .form-actions .button {
+        padding: 1em 3em;
+        font-size: 1.1em;
+        min-width: 200px;
+    }
+    
+    .login-link {
+        text-align: center;
+        margin-top: 2em;
+        padding: 1em;
+        background: #f7fafc;
+        border-radius: 0.5em;
+    }
+    
+    .login-link a {
+        color: #38b2ac;
+        text-decoration: none;
+        font-weight: bold;
+    }
+    
+    .login-link a:hover {
+        text-decoration: underline;
+    }
+    
+    @media (max-width: 600px) {
+        .signup-container {
+            padding: 1em;
+        }
+        
+        .signup-form {
+            padding: 1.5em;
+        }
+        
+        .signup-container h1 {
+            font-size: 1.5em;
+        }
+    }
+</style>
+{% endblock %} 
