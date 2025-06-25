@@ -286,15 +286,19 @@
     margin: 0 auto;
     background: #fff;
     font-size: 1rem;
+    box-shadow: 0 2px 8px rgba(56,178,172,0.08);
   }
   .result-table th, .result-table td {
-    border: 1px solid #e0e0e0;
-    padding: 8px 12px;
+    border: 1px solid #b2f5ea;
+    padding: 10px 12px;
     text-align: left;
   }
   .result-table th {
-    background: #f5f5f5;
+    background: #38b2ac;
+    color: #fff;
     font-weight: bold;
+    font-size: 1.05em;
+    border-bottom: 2px solid #2c3e50;
   }
   .result-table tr:nth-child(even) {
     background: #f9f9f9;
@@ -414,6 +418,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         uploadStatus.classList.remove('active');
                         submitButton.disabled = false;
                         showResults(jobId);
+                        localStorage.removeItem('latest_job_id');
                     }, 1000);
                 } else {
                     setTimeout(() => updateProgress(jobId), 1000);
@@ -429,75 +434,34 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   // 結果を表示する関数
-  function showResults(jobId) {
-    console.log('showResults called with jobId:', jobId);
-    if (!jobId) {
-        console.log('jobId is empty, returning');
-        return;
-    }
-    
+  function showResults(jobId, retryCount = 0) {
+    if (!jobId) return;
     const url = `/get-results/?job_id=${jobId}`;
-    console.log('Fetching from URL:', url);
-    
     fetch(url)
-        .then(response => {
-            console.log('Response status:', response.status);
-            return response.json();
-        })
+        .then(response => response.json())
         .then(data => {
-            console.log('showResults data:', data);
-            console.log('data.results:', data.results);
-            console.log('data.results.length:', data.results ? data.results.length : 'undefined');
-            
             const resultsContainer = document.getElementById('results-container');
-            if (!resultsContainer) {
-                console.log('results-container not found');
-                return;
-            }
-
             if (!data.results || data.results.length === 0) {
-                console.log('No results found, showing empty message');
-                resultsContainer.innerHTML = '<h3>処理結果</h3><p>結果がありません。</p>';
+                if (retryCount < 5) {
+                    setTimeout(() => showResults(jobId, retryCount + 1), 2000);
+                } else {
+                    resultsContainer.innerHTML = '<h3>処理結果</h3><p>結果がありません。</p>';
+                }
                 return;
             }
-
-            console.log('Building HTML for results');
-            let html = `
-              <h3>処理結果</h3>
-              <div style="overflow-x:auto;">
-                <table class="result-table">
-                  <thead>
-                    <tr>
-                      <th>ファイル名</th>
-                      <th>ステータス</th>
-                      <th>メッセージ</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-            `;
-
-            data.results.forEach(r => {
+            let html = '<h3>処理結果</h3><table class="result-table"><tr><th>ファイル名</th><th>ステータス</th><th>メッセージ</th></tr>';
+            data.results.forEach(item => {
                 html += `<tr>
-                    <td>${r.filename}</td>
-                    <td>${r.status}</td>
-                    <td>${r.message}</td>
+                    <td>${item.filename}</td>
+                    <td>${item.status === "OK" ? "成功" : "失敗"}</td>
+                    <td>${item.message}</td>
                 </tr>`;
             });
-
-            html += `
-                  </tbody>
-                </table>
-              </div>
-            `;
+            html += '</table>';
             resultsContainer.innerHTML = html;
-            console.log('HTML set successfully');
         })
         .catch(err => {
-            console.error('Error in showResults:', err);
-            const resultsContainer = document.getElementById('results-container');
-            if (resultsContainer) {
-                resultsContainer.innerHTML = '<h3>処理結果</h3><p>取得に失敗しました。</p>';
-            }
+            // ...（エラー処理）...
         });
   }
 
