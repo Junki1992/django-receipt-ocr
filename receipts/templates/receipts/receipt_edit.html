@@ -205,11 +205,16 @@
       {% csrf_token %}
       <div class="form-row">
         <label for="user">ユーザー</label>
-        <select name="user" id="user" required>
-          {% for user in users %}
-            <option value="{{ user.id }}" {% if user.id == receipt.user.id %}selected{% endif %}>{{ user.username }}</option>
-          {% endfor %}
-        </select>
+        {% if users %}
+          <select name="user" id="user" required>
+            {% for user in users %}
+              <option value="{{ user.id }}" {% if user.id == receipt.user.id %}selected{% endif %}>{{ user.username }}</option>
+            {% endfor %}
+          </select>
+        {% else %}
+          <input type="text" value="{{ receipt.user.username }}" readonly style="background:#f8fafc; color:#888;">
+          <input type="hidden" name="user" value="{{ receipt.user.id }}">
+        {% endif %}
       </div>
       <div class="form-row">
         <label for="category">カテゴリ</label>

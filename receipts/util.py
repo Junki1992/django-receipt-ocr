@@ -81,7 +81,7 @@ def process_single_image(request, f, results, job_id=None, total=None, done=None
         
         # 拡張子とサイズのチェック
         ext = os.path.splitext(filename_for_display)[1].lower()
-        if ext not in ['.jpg', '.jpeg', '.png', '.gif', '.webp']:
+        if ext not in ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.heic', '.heif']:
             raise ValueError(f"対応していないファイル形式です: {ext}")
         if f.size > 16 * 1024 * 1024:  # 16MB
             raise ValueError("ファイルサイズが16MBを超えています。")

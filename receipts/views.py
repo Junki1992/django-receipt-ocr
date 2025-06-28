@@ -49,7 +49,12 @@ from .util import (
 import threading
 import time
 import shutil
+import pillow_heif
+import base64
 
+# views.py の先頭で一度だけロード
+from tensorflow.keras.models import load_model
+MODEL = load_model('receipt_classifier.h5')
 
 # --- OCR精度改善モジュール---
 def upscale_if_small(img_cv, min_dim=1000, scale_factor=2):
@@ -83,7 +88,8 @@ def try_google_ocr(image_bytes, vision_client, max_retries=2):
     from google.cloud import vision
     for attempt in range(max_retries):
         try:
-            image = vision.Image(content=image_bytes)
+            safe_bytes = ensure_bytes(image_bytes)
+            image = vision.Image(content=safe_bytes)
             response = vision_client.document_text_detection(image=image)
             if response.text_annotations:
                 return response
@@ -116,7 +122,7 @@ def run_ocr_with_fallback(img_cv, vision_client):
 # Google Cloud Vision APIの認証情報のパスを設定
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = os.path.join(settings.BASE_DIR, 'credentials.json')
 
-ALLOWED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.zip']
+ALLOWED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.heic', '.heif', '.zip']
 MAX_FILE_SIZE = 16 * 1024 * 1024  # 16MB
 MAX_UPLOAD_FILES = 20  # 例：一度に20枚まで
 
@@ -131,25 +137,38 @@ def preprocess_image(image_path):
     画像の前処理を行う関数
     """
     try:
-        # PILで画像を読み込み
+        # HEIC/HEIFの場合はJPEGに変換
+        if image_path.lower().endswith(('.heic', '.heif')):
+            heif_file = pillow_heif.read_heif(image_path)
+            image = Image.frombytes(
+                heif_file.mode,
+                heif_file.size,
+                heif_file.data,
+                "raw"
+            )
+            # 一時的にJPEGとして保存し直す
+            jpeg_path = image_path.rsplit('.', 1)[0] + '.jpg'
+            image.save(jpeg_path, format="JPEG")
+            image_path = jpeg_path
+        # 以降は通常通りPillowで処理
         img = Image.open(image_path)
-
+        
         # グレースケール変換
         img = img.convert('L')
-
+        
         # コントラスト強調
         enhancer = ImageEnhance.Contrast(img)
         img = enhancer.enhance(2.0)
-
+        
         # PIL画像をOpenCV形式に変換
         img_cv = np.array(img)
-
+        
         # ノイズ除去
         img_cv = cv2.fastNlMeansDenoising(img_cv)
-
+        
         # 二値化
         _, img_cv = cv2.threshold(img_cv, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-
+        
         # --- 傾き補正の実装ここから ---
         coords = np.column_stack(np.where(img_cv > 0))
         angle = 0
@@ -164,11 +183,11 @@ def preprocess_image(image_path):
             M = cv2.getRotationMatrix2D((w // 2, h // 2), angle, 1.0)
             img_cv = cv2.warpAffine(img_cv, M, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
         # --- 傾き補正の実装ここまで ---
-
+        
         # 一時ファイルとして保存
         temp_path = f"{image_path}_processed.jpg"
         cv2.imwrite(temp_path, img_cv)
-
+        
         return temp_path
     except Exception as e:
         logger.error(f"画像の前処理中にエラーが発生: {str(e)}")
@@ -180,26 +199,27 @@ def ocr_google_vision_advanced(image_path):
     """
     try:
         logger.info(f"高度なOCR処理開始 - 画像パス: {image_path}")
-
+        
         # 画像の前処理
         processed_image_path = preprocess_image(image_path)
         logger.info(f"前処理後の画像パス: {processed_image_path}")
-
+        
         # 画像の存在確認
         if not os.path.exists(processed_image_path):
             logger.error(f"処理後の画像ファイルが見つかりません: {processed_image_path}")
             return ""
-
+            
         client = vision.ImageAnnotatorClient()
         with io.open(processed_image_path, 'rb') as image_file:
             content = image_file.read()
             logger.info(f"画像ファイル読み込み完了 - サイズ: {len(content)} bytes")
-
-        image = vision.Image(content=content)
-
+        
+        safe_bytes = ensure_bytes(content)
+        image = vision.Image(content=safe_bytes)
+        
         # 最新のOCR設定を最適化
         logger.info("Google Cloud Vision API（最新機能）にリクエスト送信")
-
+        
         # 1. 基本的なテキスト検出（高精度モード）
         text_response = client.text_detection(
             image=image,
@@ -211,7 +231,7 @@ def ocr_google_vision_advanced(image_path):
                 }
             }
         )
-
+        
         # 2. ドキュメントテキスト検出（レイアウト解析）
         document_response = client.document_text_detection(
             image=image,
@@ -319,7 +339,8 @@ def ocr_google_vision_with_layout_analysis(image_path):
         with io.open(processed_image_path, 'rb') as image_file:
             content = image_file.read()
         
-        image = vision.Image(content=content)
+        safe_bytes = ensure_bytes(content)
+        image = vision.Image(content=safe_bytes)
         
         # ドキュメントテキスト検出（レイアウト解析機能）
         response = client.document_text_detection(
@@ -569,31 +590,31 @@ def extract_items(text):
 def extract_total(text):
     """OCRテキストから合計金額を抽出する関数（現場パターン対応版）"""
     import re
-
+    
     # パターン1: 「差引合計 ¥金額」の形式（最優先）
     match = re.search(r'差引合計[^\d]*([0-9,]+)', text)
     if match:
         amount = int(match.group(1).replace(',', ''))
         return str(amount)
-
+    
     # パターン2: 「¥金額-」の形式（領収証の合計金額）
     match = re.search(r'¥([0-9,]+)-', text)
     if match:
         amount = int(match.group(1).replace(',', ''))
         return str(amount)
-
+    
     # パターン3: 「合計 ¥金額」の形式
     match = re.search(r'合計\s*¥([0-9,]+)', text)
     if match:
         amount = int(match.group(1).replace(',', ''))
         return str(amount)
-
+    
     # パターン4: 「お買上点数」の前にある金額（合計金額の可能性が高い）
     match = re.search(r'([0-9,]{3,7})\s*お買上点数', text)
     if match:
         amount = int(match.group(1).replace(',', ''))
         return str(amount)
-
+    
     # パターン5: 「小計」と「税額」から合計を計算
     subtotal_match = re.search(r'小計\s*¥([0-9,]+)', text)
     tax_match = re.search(r'税額\s*¥([0-9,]+)', text)
@@ -602,7 +623,7 @@ def extract_total(text):
         tax = int(tax_match.group(1).replace(',', ''))
         total = subtotal + tax
         return str(total)
-
+    
     # パターン6: 「¥金額」の最大値を返す（お釣りや預かり金は除外）
     exclude_patterns = [
         r'お釣り\s*¥([0-9,]+)',
@@ -616,17 +637,17 @@ def extract_total(text):
         matches = re.findall(pattern, text)
         for match in matches:
             exclude_amounts.add(int(match.replace(',', '')))
-
+    
     matches = re.findall(r'¥([0-9,]+)', text)
     valid_amounts = []
     for match in matches:
         amount = int(match.replace(',', ''))
         if amount not in exclude_amounts and 10 <= amount <= 100000:
             valid_amounts.append(amount)
-
+    
     if valid_amounts:
         return str(max(valid_amounts))
-
+    
     # パターン7: 全体から最大値を取得（最終手段）
     all_amounts = []
     numbers = re.findall(r'([0-9,]{3,7})', text)
@@ -638,7 +659,7 @@ def extract_total(text):
                 all_amounts.append(amount)
     if all_amounts:
         return str(max(all_amounts))
-
+    
     # 最終手段：1円でも返す
     return ""
 
@@ -730,7 +751,8 @@ def detect_logo_and_category(image_path):
         # 画像を読み込み
         with io.open(image_path, 'rb') as image_file:
             content = image_file.read()
-        image = vision.Image(content=content)
+        safe_bytes = ensure_bytes(content)
+        image = vision.Image(content=safe_bytes)
 
         # ロゴ検出を実行
         response = client.logo_detection(image=image)
@@ -779,11 +801,15 @@ def process_single_image(request, f, results, job_id=None, total=None, done=None
     """単一の画像ファイルを処理して、Receiptオブジェクトを作成する"""
     try:
         filename_for_display = original_filename or f.name
+        if not filename_for_display or filename_for_display in ['image.heic', 'image.heif', 'image.jpg', 'image.jpeg']:
+            import time
+            ext = os.path.splitext(f.name)[1].lower() or '.jpg'
+            filename_for_display = f"photo_{int(time.time())}{ext}"
         logger.info(f"ファイル処理開始: {filename_for_display} (サイズ: {f.size} bytes)")
-        
+
         # 拡張子とサイズのチェック
         ext = os.path.splitext(filename_for_display)[1].lower()
-        if ext not in ['.jpg', '.jpeg', '.png', '.gif', '.webp']:
+        if ext not in ALLOWED_EXTENSIONS:
             raise ValueError(f"対応していないファイル形式です: {ext}")
         if f.size > MAX_FILE_SIZE:
             raise ValueError("ファイルサイズが16MBを超えています。")
@@ -794,11 +820,11 @@ def process_single_image(request, f, results, job_id=None, total=None, done=None
         temp_full_path = os.path.join(settings.MEDIA_ROOT, temp_path)
 
         if not is_receipt_image(temp_full_path):
-             raise ValueError("この画像はレシート・領収書として認識できませんでした。")
+            raise ValueError("この画像はレシート・領収書として認識できませんでした。")
 
         # OCRはtmp/のファイルで実施
         text = ocr_google_vision(temp_full_path)
-        
+
         # 店舗名、カテゴリ、合計金額を抽出
         store_name = extract_store_name(text, STORE_KEYWORDS)
         category = guess_category_by_store(store_name, STORE_KEYWORDS)
@@ -820,10 +846,10 @@ def process_single_image(request, f, results, job_id=None, total=None, done=None
             issue_date=issue_date,
         )
         # run_ocr_task.delay(receipt.id)  # この行をコメントアウト
-        
+
         # tmpファイル削除
         default_storage.delete(temp_path)
-        
+
         results.append({
             "filename": filename_for_display,
             "status": "OK",
@@ -834,6 +860,8 @@ def process_single_image(request, f, results, job_id=None, total=None, done=None
         cache.set(f'error_{job_id}', None, timeout=3600)
         return None # エラーなし
     except Exception as e:
+        import traceback
+        print(traceback.format_exc())
         logger.error(f"ファイル処理中にエラーが発生 ({filename_for_display}): {str(e)}", exc_info=True)
         # 一時ファイルが残っていれば削除
         if 'temp_full_path' in locals() and os.path.exists(temp_full_path):
@@ -851,10 +879,15 @@ def process_single_image(request, f, results, job_id=None, total=None, done=None
 
 @login_required
 def index(request):
+    print("=== indexビュー呼び出し ===")
+    print("リクエストメソッド:", request.method)
+    print("FILES内容:", request.FILES)
     error = None
     results = []
 
     if request.method == "POST":
+        if not request.FILES.get('receipt'):
+            return JsonResponse({'success': False, 'error': 'ファイルが選択されていません。もう一度やり直してください。'})
         try:
             job_id = request.POST.get('job_id')
             files = request.FILES.getlist("receipt")
@@ -875,13 +908,13 @@ def index(request):
                             for file_info in zip_ref.infolist():
                                 if not file_info.is_dir() and not file_info.filename.startswith('__MACOSX') and not file_info.filename.startswith('._'):
                                     zip_ext = os.path.splitext(file_info.filename)[1].lower()
-                                    if zip_ext in ['.jpg', '.jpeg', '.png', '.gif', '.webp']:
+                                    if zip_ext in ALLOWED_EXTENSIONS:
                                         total += 1
                     except Exception as e:
                         print(f"DEBUG: zipファイル枚数カウントエラー: {e}")
                     finally:
                         os.remove(tmp_zip_path)
-                elif ext in ['.jpg', '.jpeg', '.png', '.gif', '.webp']:
+                elif ext in ALLOWED_EXTENSIONS:
                     total += 1
 
             set_progress(job_id, total, 0)
@@ -921,7 +954,7 @@ def index(request):
                                             if not file.startswith('__MACOSX') and not file.startswith('._'):
                                                 file_path = os.path.join(root, file)
                                                 file_ext = os.path.splitext(file)[1].lower()
-                                                if file_ext in ['.jpg', '.jpeg', '.png', '.gif', '.webp']:
+                                                if file_ext in ALLOWED_EXTENSIONS:
                                                     # ファイル名の文字化け修正
                                                     fixed_name = file
                                                     try:
@@ -953,7 +986,7 @@ def index(request):
                             except Exception as e:
                                 print(f"DEBUG: zipファイル処理エラー: {e}")
                                 error = f"zipファイルの処理中にエラーが発生しました: {str(e)}"
-                        elif ext in ['.jpg', '.jpeg', '.png', '.gif', '.webp']:
+                        elif ext in ALLOWED_EXTENSIONS:
                             done += 1
                             set_progress(job_id, total, done)
                             time.sleep(0.2)
@@ -965,14 +998,13 @@ def index(request):
                                 )
                                 if processing_error:
                                     error = processing_error
-                                    break
-                        try:
-                            default_storage.delete(temp_path)
-                        except Exception as e:
-                            print(f"DEBUG: tempファイル削除失敗: {e}")
-                    # キャッシュ保存
-                    cache.set(f'results_{job_id}', results, timeout=3600)
-                    cache.set(f'error_{job_id}', error, timeout=3600)
+                            try:
+                                default_storage.delete(temp_path)
+                            except Exception as e:
+                                print(f"DEBUG: tempファイル削除失敗: {e}")
+                            # キャッシュ保存
+                            cache.set(f'results_{job_id}', results, timeout=3600)
+                            cache.set(f'error_{job_id}', error, timeout=3600)
 
                 thread = threading.Thread(target=process_files)
                 thread.start()
@@ -1098,7 +1130,7 @@ def upload_view(request):
             # ここでOCRや保存処理
             done += 1
             set_progress(job_id, total, done)
-        return HttpResponse('ファイル受信OK')
+            return HttpResponse('ファイル受信OK')
     return render(request, 'index.html')
 
 def load_store_keywords():
@@ -1132,9 +1164,14 @@ def extract_product_items(text):
         }]
     return []
 
-@staff_member_required
+@login_required
 def receipt_dashboard(request):
-    receipts = Receipt.objects.all().order_by('-uploaded_at')
+    # 一般ユーザーは自分のレシートだけ、管理者は全件
+    if request.user.is_superuser:
+        receipts = Receipt.objects.all().order_by('-uploaded_at')
+    else:
+        receipts = Receipt.objects.filter(user=request.user).order_by('-uploaded_at')
+    
     paginator = Paginator(receipts, 20)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
@@ -1167,7 +1204,7 @@ def receipt_dashboard(request):
     # グラフ用データ
     category_labels = [c['category'] for c in category_summary]
     category_data = [c['total'] for c in category_summary]
-
+    
     return render(request, 'receipts/dashboard_receipts.html', {
         'receipts': page_obj,
         'page_obj': page_obj,
@@ -1178,11 +1215,34 @@ def receipt_dashboard(request):
         'category_data': category_data,
     })
 
-@staff_member_required
+@login_required
 def receipt_edit(request, receipt_id):
-    receipt = get_object_or_404(Receipt, id=receipt_id)
+    # 一般ユーザーは自分のレシートだけ、管理者は全件
+    if request.user.is_superuser:
+        receipt = get_object_or_404(Receipt, id=receipt_id)
+    else:
+        receipt = get_object_or_404(Receipt, id=receipt_id, user=request.user)
     
     if request.method == 'POST':
+        # 変更前の値を保存
+        original_data = {
+            'text': receipt.text,
+            'shop_name': receipt.shop_name,
+            'store_name': receipt.store_name,
+            'memo': receipt.memo,
+            'category': receipt.category,
+            'total_amount': receipt.total_amount,
+            'issue_date': receipt.issue_date,
+        }
+        
+        # 商品明細の変更前の値も保存
+        original_items = {}
+        for item in receipt.product_items.all():
+            original_items[item.id] = {
+                'name': item.name,
+                'price': item.price,
+            }
+        
         # OCRテキストから商品明細を再抽出
         if request.POST.get('reextract_items'):
             # --- ロック状態のチェック ---
@@ -1213,24 +1273,24 @@ def receipt_edit(request, receipt_id):
             receipt.save()
             messages.success(request, 'OCRテキストから商品明細を再抽出しました。')
             return redirect('receipt_edit', receipt_id=receipt.id)
+        
         # フォームデータの処理
-        user_id = request.POST.get('user')
-        if user_id:
-            try:
-                # ユーザーIDからUserオブジェクトを取得
-                User = get_user_model()
-                user = User.objects.get(id=user_id)
-                receipt.user = user
-            except User.DoesNotExist:
-                messages.error(request, '指定されたユーザーが見つかりません。')
-                return redirect('dashboard_receipts')
+        # 一般ユーザーはユーザー変更を許可しない
+        if request.user.is_superuser:
+            user_id = request.POST.get('user')
+            if user_id:
+                try:
+                    User = get_user_model()
+                    user = User.objects.get(id=user_id)
+                    receipt.user = user
+                except User.DoesNotExist:
+                    messages.error(request, '指定されたユーザーが見つかりません。')
+                    return redirect('dashboard_receipts')
         
         receipt.text = request.POST.get('text', '')
-        # 店舗名(shop_name)が空やNoneの場合は上書きしない
         shop_name_post = request.POST.get('shop_name', None)
         if shop_name_post not in [None, '']:
             receipt.shop_name = shop_name_post
-        # 店舗名（詳細）
         store_name_post = request.POST.get('store_name', None)
         if store_name_post not in [None, '']:
             receipt.store_name = store_name_post
@@ -1238,16 +1298,19 @@ def receipt_edit(request, receipt_id):
         receipt.category = request.POST.get('category', 'その他')
         
         # ファイルのアップロード処理
+        file_changed = False
         if 'file' in request.FILES:
             receipt.file = request.FILES['file']
+            file_changed = True
         
-        # --- 商品明細(ProductItem)の更新 ---
+        # 商品明細(ProductItem)の更新
+        items_changed = False
         for item in receipt.product_items.all():
             name_key = f'product_name_{item.id}'
             price_key = f'product_price_{item.id}'
             new_name = request.POST.get(name_key, item.name)
             new_price_raw = request.POST.get(price_key, None)
-            # 金額が空や不正な場合は前の値を使う
+            
             try:
                 if new_price_raw is None or new_price_raw == '':
                     new_price = item.price
@@ -1258,9 +1321,12 @@ def receipt_edit(request, receipt_id):
             except Exception as e:
                 print(f"[DEBUG] 金額変換エラー: {e}, item.id={item.id}, 入力値={new_price_raw}")
                 new_price = item.price
-            # 1円がセットされる場合のデバッグ
-            if new_price == 1:
-                print(f"[DEBUG] 1円がセットされそう: item.id={item.id}, 入力値={new_price_raw}, 前の値={item.price}")
+            
+            # 変更があったかチェック
+            if (new_name != original_items[item.id]['name'] or 
+                new_price != original_items[item.id]['price']):
+                items_changed = True
+            
             item.name = new_name
             item.price = new_price
             item.save()
@@ -1268,31 +1334,60 @@ def receipt_edit(request, receipt_id):
         # 合計金額の保存処理をロック状態で分岐
         total_amount_post = request.POST.get('total_amount', None)
         locked = request.POST.get('total_amount_locked', '1')
+        total_amount_changed = False
         if locked == '0' and total_amount_post not in [None, '']:
             try:
-                receipt.total_amount = int(total_amount_post)
+                new_total = int(total_amount_post)
+                if new_total != original_data['total_amount']:
+                    total_amount_changed = True
+                receipt.total_amount = new_total
             except Exception:
                 pass
+        
         issue_date_post = request.POST.get('issue_date', None)
+        issue_date_changed = False
         if issue_date_post not in [None, '']:
             try:
+                if issue_date_post != str(original_data['issue_date'] or ''):
+                    issue_date_changed = True
                 receipt.issue_date = issue_date_post
             except Exception:
                 pass
+        
+        # 変更があったかチェック
+        data_changed = (
+            receipt.text != original_data['text'] or
+            receipt.shop_name != original_data['shop_name'] or
+            receipt.store_name != original_data['store_name'] or
+            receipt.memo != original_data['memo'] or
+            receipt.category != original_data['category'] or
+            file_changed or
+            items_changed or
+            total_amount_changed or
+            issue_date_changed
+        )
+        
         receipt.save()
-        messages.success(request, 'レシートが正常に更新されました。')
+        
+        if data_changed:
+            messages.success(request, 'レシートが正常に更新されました。')
+        else:
+            messages.info(request, '変更はありませんでした。')
+        
         return redirect('dashboard_receipts')
     
-    # ユーザー一覧を取得（ユーザー選択用）
-    User = get_user_model()
-    users = User.objects.all()
+    # ユーザー一覧を取得（管理者のみ）
+    users = []
+    if request.user.is_superuser:
+        User = get_user_model()
+        users = User.objects.all()
     
     # カテゴリ選択肢
     categories = [
         '食費', '交通費', '日用品', '医療費', '娯楽費', 
         '衣類費', '光熱費', '通信費', 'その他'
     ]
-
+    
     # 合計金額（total_amountがあればそれを優先）
     if getattr(receipt, 'total_amount', None) not in [None, '', 0]:
         total_amount = receipt.total_amount
@@ -1449,3 +1544,18 @@ def get_processing_results(request):
         'success': False,
         'error': 'Job ID not provided'
     })
+
+def ensure_bytes(content):
+    if isinstance(content, bytes):
+        return content
+    if isinstance(content, str):
+        # Data URI 形式
+        if content.startswith("data:image"):
+            _, base64_data = content.split(",", 1)
+            return base64.b64decode(base64_data)
+        # base64文字列
+        try:
+            return base64.b64decode(content)
+        except Exception:
+            raise ValueError("Content is a string but not valid base64")
+    raise TypeError("Unsupported image content type")

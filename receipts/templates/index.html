@@ -16,7 +16,7 @@
   <div class="info-cards">
     <div class="info-card">
       <i class="fas fa-file-alt"></i>
-      <p>対応形式<br>JPG, PNG, WEBP, ZIP</p>
+      <p>対応形式<br>JPG, PNG, WEBP, HEIC, HEIF, ZIP</p>
     </div>
     <div class="info-card">
       <i class="fas fa-weight-hanging"></i>
@@ -28,40 +28,43 @@
     </div>
   </div>
 
-  <form method="post" enctype="multipart/form-data" id="upload-form">
+  <!-- iOS専用の案内を追加 -->
+  <div id="ios-notice" style="display: none; background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px; padding: 1em; margin-bottom: 1em; text-align: center;">
+    <p style="margin: 0; color: #856404;">
+      <i class="fas fa-info-circle"></i>
+      <strong>iPhone/iPadをご利用の方へ</strong><br>
+      カメラで撮影する場合は「設定 → カメラ → フォーマット → 互換性優先（JPEG）」をお勧めします
+    </p>
+  </div>
+
+  <form id="upload-form" method="post" enctype="multipart/form-data">
     {% csrf_token %}
-    <div class="drop-zone" id="drop-zone">
-      <input type="file" id="file-input" name="receipt" accept=".jpg,.jpeg,.png,.gif,.webp,.zip" multiple required>
+    <div id="drop-zone" class="drop-zone">
       <div class="drop-zone-prompt">
         <i class="fas fa-cloud-upload-alt"></i>
-        <p class="drop-guide-pc">ここにファイルをドラッグ＆ドロップ</p>
+        <p class="drop-guide-pc">ここにファイルをドラッグ＆ドロップ<br>または</p>
         <p class="drop-guide-mobile">写真を選択 または撮影してください</p>
-        <span class="or-text">または</span>
-        <label for="file-input" class="browse-btn">ファイルを選択</label>
       </div>
+      <label for="file-input" class="browse-btn">ファイルを選択</label>
+      <input type="file" id="file-input" name="receipt" multiple required style="display: none;">
+      <div id="file-preview" class="file-preview"></div>
     </div>
-
-    <div id="file-preview" class="file-preview"></div>
-
-    <div class="upload-status" id="upload-status">
-      <div class="spinner"></div>
-      <p>アップロード中...</p>
-    </div>
-
-    <div class="actions">
-      <button type="submit" id="submit-button" class="btn btn-primary">
-        <i class="fas fa-upload"></i> アップロード
-      </button>
-      <button type="reset" id="reset-button" class="btn btn-secondary">
-        <i class="fas fa-undo"></i> リセット
-      </button>
-      <a href="{% url 'export_receipts_csv' %}" class="btn btn-secondary" id="csv-download-btn">
-        <i class="fas fa-file-csv"></i> CSVダウンロード
-      </a>
+    <div style="text-align: center;">
+      <button type="submit" id="submit-button">アップロード</button>
+      <button type="reset" id="reset-button">リセット</button>
     </div>
   </form>
 
+  <!-- プログレスバー用のdivも追加 -->
+  <div id="upload-status" class="upload-status">
+    <div class="spinner"></div>
+    <p>アップロード中...</p>
+  </div>
+
   <div id="results-container" class="results-container"></div>
+
+  <!-- エラー表示用のdivを用意 -->
+  <div id="error-message" class="alert alert-danger" style="display:none;"></div>
 </div>
 {% endblock %}
 
@@ -152,10 +155,13 @@
     color: #38b2ac;
     border: 1px solid #38b2ac;
     border-radius: 0.5em;
-    padding: 0.6em 1.2em;
+    padding: 1em 2em;
     cursor: pointer;
     transition: background-color 0.2s, color 0.2s;
     margin-top: 1.2em;
+    display: inline-block;
+    min-height: 20px;
+    min-width: 44px;
   }
   .browse-btn:hover {
     background: #38b2ac;
@@ -308,272 +314,297 @@
 
 {% block extra_js %}
 <script>
+// iOS検出
+function isIOS() {
+    return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+}
+
+// ページ読み込み時にiOS案内を表示
 document.addEventListener('DOMContentLoaded', function() {
-  const dropZone = document.getElementById('drop-zone');
-  const fileInput = document.getElementById('file-input');
-  const filePreview = document.getElementById('file-preview');
-  const uploadForm = document.getElementById('upload-form');
-  const submitButton = document.getElementById('submit-button');
-  const resetButton = document.getElementById('reset-button');
-  const uploadStatus = document.getElementById('upload-status');
-
-  // 進捗バーの要素を追加
-  const progressContainer = document.createElement('div');
-  progressContainer.id = 'progress-container';
-  progressContainer.style.cssText = `
-    display: none;
-    margin: 2em 0;
-    text-align: center;
-  `;
-  progressContainer.innerHTML = `
-    <div class="progress-bar-container" style="
-      width: 100%;
-      background-color: #e2e8f0;
-      border-radius: 10px;
-      overflow: hidden;
-      margin-bottom: 1em;
-    ">
-      <div id="progress-bar" style="
-        width: 0%;
-        height: 20px;
-        background: linear-gradient(90deg, #38b2ac 0%, #4fd1c5 100%);
-        transition: width 0.3s ease;
-        border-radius: 10px;
-      "></div>
-    </div>
-    <div id="progress-text" style="
-      font-size: 0.9em;
-      color: #6c757d;
-      margin-bottom: 1em;
-    ">0%</div>
-    <div id="progress-details" style="
-      font-size: 0.8em;
-      color: #adb5bd;
-    "></div>
-  `;
-  
-  // 進捗バーをupload-statusの後に挿入
-  uploadStatus.parentNode.insertBefore(progressContainer, uploadStatus.nextSibling);
-
-  // Drag and Drop
-  dropZone.addEventListener('dragover', e => {
-    e.preventDefault();
-    dropZone.classList.add('dragover');
-  });
-  dropZone.addEventListener('dragleave', e => {
-    e.preventDefault();
-    dropZone.classList.remove('dragover');
-  });
-  dropZone.addEventListener('drop', e => {
-    e.preventDefault();
-    dropZone.classList.remove('dragover');
-    fileInput.files = e.dataTransfer.files;
-    handleFiles(fileInput.files);
-  });
-  dropZone.addEventListener('click', () => {
-    fileInput.click();
-  });
-  fileInput.addEventListener('change', () => {
-    handleFiles(fileInput.files);
-  });
-  
-  // Handle file selection
-  function handleFiles(files) {
-    filePreview.innerHTML = '';
-    if (files.length > 0) {
-      const file = files[0];
-      const previewItem = document.createElement('div');
-      previewItem.className = 'preview-item';
-      
-      let iconClass = 'fa-file';
-      if (file.type.startsWith('image/')) {
-        iconClass = 'fa-file-image';
-      } else if (file.type === 'application/zip') {
-        iconClass = 'fa-file-archive';
-      }
-      
-      previewItem.innerHTML = `<i class="fas ${iconClass}"></i> <span>${file.name}</span>`;
-      filePreview.appendChild(previewItem);
+    if (isIOS()) {
+        document.getElementById('ios-notice').style.display = 'block';
     }
-  }
+    const dropZone = document.getElementById('drop-zone');
+    const fileInput = document.getElementById('file-input');
+    const filePreview = document.getElementById('file-preview');
+    const uploadForm = document.getElementById('upload-form');
+    const submitButton = document.getElementById('submit-button');
+    const resetButton = document.getElementById('reset-button');
+    const uploadStatus = document.getElementById('upload-status');
 
-  // 進捗監視関数
-  function updateProgress(jobId) {
-    if (!jobId) return;
-    fetch(`/progress/?job_id=${jobId}`)
-        .then(response => response.json())
-        .then(data => {
-            const progressBar = document.getElementById('progress-bar');
-            const progressText = document.getElementById('progress-text');
-            const progressDetails = document.getElementById('progress-details');
-            if (data.total > 0) {
-                const percentage = Math.round((data.done / data.total) * 100);
-                progressBar.style.width = percentage + '%';
-                progressText.textContent = `${percentage}% (${data.done}/${data.total})`;
-                progressDetails.textContent = '画像を処理中...';
-                if (data.done >= data.total && data.total > 0) {
-                    progressDetails.textContent = '完了しました！';
+    // 進捗バーの要素を追加
+    const progressContainer = document.createElement('div');
+    progressContainer.id = 'progress-container';
+    progressContainer.style.cssText = `
+      display: none;
+      margin: 2em 0;
+      text-align: center;
+    `;
+    progressContainer.innerHTML = `
+      <div class="progress-bar-container" style="
+        width: 100%;
+        background-color: #e2e8f0;
+        border-radius: 10px;
+        overflow: hidden;
+        margin-bottom: 1em;
+      ">
+        <div id="progress-bar" style="
+          width: 0%;
+          height: 20px;
+          background: linear-gradient(90deg, #38b2ac 0%, #4fd1c5 100%);
+          transition: width 0.3s ease;
+          border-radius: 10px;
+        "></div>
+      </div>
+      <div id="progress-text" style="
+        font-size: 0.9em;
+        color: #6c757d;
+        margin-bottom: 1em;
+      ">0%</div>
+      <div id="progress-details" style="
+        font-size: 0.8em;
+        color: #adb5bd;
+      "></div>
+    `;
+    
+    // 進捗バーをupload-statusの後に挿入
+    uploadStatus.parentNode.insertBefore(progressContainer, uploadStatus.nextSibling);
+
+    // Drag and Drop
+    dropZone.addEventListener('dragover', e => {
+      e.preventDefault();
+      dropZone.classList.add('dragover');
+    });
+    dropZone.addEventListener('dragleave', e => {
+      e.preventDefault();
+      dropZone.classList.remove('dragover');
+    });
+    dropZone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropZone.classList.remove('dragover');
+      fileInput.files = e.dataTransfer.files;
+      handleFiles(fileInput.files);
+    });
+    dropZone.addEventListener('click', (e) => {
+      if (e.target !== dropZone) return;
+      fileInput.click();
+    });
+    fileInput.addEventListener('change', () => {
+        // alert('ファイル選択イベント発火');
+        if (fileInput.files && fileInput.files.length > 0) {
+            // alert('ファイル選択成功: ' + fileInput.files[0].name);
+            handleFiles(fileInput.files);
+        } else {
+            // alert('ファイルが選択されていません');
+        }
+    });
+    
+    // Handle file selection
+    function handleFiles(files) {
+        // alert('handleFiles関数開始');
+        filePreview.innerHTML = '';
+        if (files && files.length > 0) {
+            const file = files[0];
+            // alert('処理するファイル: ' + file.name + ' (タイプ: ' + file.type + ')');
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                filePreview.innerHTML = `
+                    <div class="file-info">
+                        <img src="${e.target.result}" alt="Preview" style="max-width: 200px; max-height: 200px;">
+                        <p>${file.name}</p>
+                    </div>
+                `;
+                // alert('ファイルプレビュー表示完了');
+            };
+            reader.readAsDataURL(file);
+            document.getElementById('upload-form').dataset.hasFile = 'true';
+            // alert('フォームバリデーション更新完了');
+        } else {
+            // alert('ファイルが選択されていません（handleFiles内）');
+        }
+    }
+
+    // 進捗監視関数（修正版）
+    function updateProgress(jobId, retryCount = 0) {
+        if (!jobId || retryCount > 30) { // 最大30回で停止
+            console.log('Progress monitoring stopped');
+            return;
+        }
+        
+        fetch(`/progress/?job_id=${jobId}`)
+            .then(response => response.json())
+            .then(data => {
+                const progressBar = document.getElementById('progress-bar');
+                const progressText = document.getElementById('progress-text');
+                const progressDetails = document.getElementById('progress-details');
+                
+                if (data.total > 0) {
+                    const percentage = Math.round((data.done / data.total) * 100);
+                    progressBar.style.width = percentage + '%';
+                    progressText.textContent = `${percentage}% (${data.done}/${data.total})`;
+                    progressDetails.textContent = '画像を処理中...';
+                    
+                    if (data.done >= data.total && data.total > 0) {
+                        progressDetails.textContent = '完了しました！';
+                        setTimeout(() => {
+                            progressContainer.style.display = 'none';
+                            uploadStatus.classList.remove('active');
+                            submitButton.disabled = false;
+                            showResults(jobId);
+                            localStorage.removeItem('latest_job_id');
+                        }, 1000);
+                    } else {
+                        setTimeout(() => updateProgress(jobId, retryCount + 1), 1000);
+                    }
+                } else {
+                    progressDetails.textContent = '処理を開始しています...';
+                    setTimeout(() => updateProgress(jobId, retryCount + 1), 1000);
+                }
+            })
+            .catch(error => {
+                console.error('Progress check error:', error);
+                if (retryCount < 10) { // エラー時は最大10回まで
+                    setTimeout(() => updateProgress(jobId, retryCount + 1), 2000);
+                } else {
+                    // エラーが続く場合は停止
+                    progressDetails.textContent = '進捗確認に失敗しました';
                     setTimeout(() => {
                         progressContainer.style.display = 'none';
                         uploadStatus.classList.remove('active');
                         submitButton.disabled = false;
-                        showResults(jobId);
-                        localStorage.removeItem('latest_job_id');
-                    }, 1000);
-                } else {
-                    setTimeout(() => updateProgress(jobId), 1000);
+                    }, 3000);
                 }
-            } else {
-                progressDetails.textContent = '処理を開始しています...';
-                setTimeout(() => updateProgress(jobId), 1000);
-            }
-        })
-        .catch(error => {
-            setTimeout(() => updateProgress(jobId), 2000);
-        });
-  }
+            });
+    }
 
-  // 結果を表示する関数
-  function showResults(jobId, retryCount = 0) {
-    if (!jobId) return;
-    const url = `/get-results/?job_id=${jobId}`;
-    fetch(url)
-        .then(response => response.json())
-        .then(data => {
-            const resultsContainer = document.getElementById('results-container');
-            if (!data.results || data.results.length === 0) {
+    // 結果を表示する関数（修正版）
+    function showResults(jobId, retryCount = 0) {
+        if (!jobId || retryCount > 10) { // 最大10回で停止
+            console.log('Result check stopped');
+            return;
+        }
+        
+        const url = `/get-results/?job_id=${jobId}`;
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                const resultsContainer = document.getElementById('results-container');
+                if (!data.results || data.results.length === 0) {
+                    if (retryCount < 5) {
+                        setTimeout(() => showResults(jobId, retryCount + 1), 2000);
+                    } else {
+                        resultsContainer.innerHTML = '<h3>処理結果</h3><p>結果が取得できませんでした。</p>';
+                    }
+                    return;
+                }
+                
+                let html = '<h3>処理結果</h3><table class="result-table"><tr><th>ファイル名</th><th>ステータス</th><th>メッセージ</th></tr>';
+                data.results.forEach(item => {
+                    html += `<tr>
+                        <td>${item.filename}</td>
+                        <td>${item.status === "OK" ? "成功" : "失敗"}</td>
+                        <td>${item.message}</td>
+                    </tr>`;
+                });
+                html += '</table>';
+                resultsContainer.innerHTML = html;
+            })
+            .catch(err => {
+                console.error('Result check error:', err);
                 if (retryCount < 5) {
                     setTimeout(() => showResults(jobId, retryCount + 1), 2000);
                 } else {
-                    resultsContainer.innerHTML = '<h3>処理結果</h3><p>結果がありません。</p>';
+                    const resultsContainer = document.getElementById('results-container');
+                    resultsContainer.innerHTML = '<h3>処理結果</h3><p>結果の取得に失敗しました。</p>';
                 }
-                return;
-            }
-            let html = '<h3>処理結果</h3><table class="result-table"><tr><th>ファイル名</th><th>ステータス</th><th>メッセージ</th></tr>';
-            data.results.forEach(item => {
-                html += `<tr>
-                    <td>${item.filename}</td>
-                    <td>${item.status === "OK" ? "成功" : "失敗"}</td>
-                    <td>${item.message}</td>
-                </tr>`;
             });
-            html += '</table>';
-            resultsContainer.innerHTML = html;
-        })
-        .catch(err => {
-            // ...（エラー処理）...
-        });
-  }
-
-  // Ajaxアップロード処理
-  uploadForm.addEventListener('submit', function(e) {
-    e.preventDefault();
-    
-    if (!fileInput.files || fileInput.files.length === 0) {
-      alert('ファイルを選択してください');
-      return;
     }
 
-    // UI状態を更新
-    submitButton.disabled = true;
-    uploadStatus.classList.add('active');
-    progressContainer.style.display = 'block';
-    
-    // 進捗バーをリセット
-    document.getElementById('progress-bar').style.width = '0%';
-    document.getElementById('progress-text').textContent = '0%';
-    document.getElementById('progress-details').textContent = 'アップロード中...';
+    // 「アップロード」ボタンは純粋にsubmitのみ
+    uploadForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      if (!fileInput.files || fileInput.files.length === 0) {
+        // alert('ファイルを選択してください');
+        return false;
+      }
 
-    // FormDataでファイルを送信
-    const formData = new FormData(uploadForm);
-    
-    // job_idを明示的に追加
-    const jobId = 'job_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-    formData.append('job_id', jobId);
-    
-    // ★ job_idをlocalStorageに保存
-    localStorage.setItem('latest_job_id', jobId);
-    
-    console.log('Sending job_id:', jobId); // デバッグ用
-    
-    fetch(uploadForm.action, {
-      method: 'POST',
-      body: formData,
-      headers: {
-        'X-Requested-With': 'XMLHttpRequest'
-      }
-    })
-    .then(response => response.json())
-    .then(data => {
-      console.log('Upload response:', data);
-      
-      if (data.success && data.job_id) {
-        // 進捗監視開始
-        updateProgress(data.job_id);
-      } else if (data.success) {
-        // job_idがない場合は即座に完了として扱う
-        document.getElementById('progress-bar').style.width = '100%';
-        document.getElementById('progress-text').textContent = '100%';
-        document.getElementById('progress-details').textContent = '完了しました！';
-        
-        setTimeout(() => {
-          progressContainer.style.display = 'none';
-          uploadStatus.classList.remove('active');
-          submitButton.disabled = false;
-          location.reload(); // 結果を表示するためページをリロード
-        }, 2000);
-      } else {
-        throw new Error(data.error || 'アップロードに失敗しました');
-      }
-    })
-    .catch(error => {
-      console.error('Upload error:', error);
-      alert('アップロードエラー: ' + error.message);
-      
-      // UI状態をリセット
+      // プログレスバー表示
+      submitButton.disabled = true;
+      uploadStatus.classList.add('active');
+      progressContainer.style.display = 'block';
+
+      // FormDataでファイルを送信
+      const formData = new FormData(uploadForm);
+      const jobId = 'job_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+      formData.append('job_id', jobId);
+      localStorage.setItem('latest_job_id', jobId);
+
+      const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+      fetch(uploadForm.action, {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'X-CSRFToken': csrftoken,
+          'X-Requested-With': 'XMLHttpRequest'
+        }
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success && data.job_id) {
+          updateProgress(data.job_id);
+        } else if (data.success) {
+          document.getElementById('progress-bar').style.width = '100%';
+          document.getElementById('progress-text').textContent = '100%';
+          document.getElementById('progress-details').textContent = '完了しました！';
+          setTimeout(() => {
+            progressContainer.style.display = 'none';
+            uploadStatus.classList.remove('active');
+            submitButton.disabled = false;
+            location.reload();
+          }, 2000);
+        } else {
+          throw new Error(data.error || 'アップロードに失敗しました');
+        }
+      })
+      .catch(error => {
+        // alert('アップロードエラー: ' + error.message);
+        progressContainer.style.display = 'none';
+        uploadStatus.classList.remove('active');
+        submitButton.disabled = false;
+      });
+    });
+
+    // ★ ページロード時にlocalStorageからjob_idを取得して結果を表示
+    const jobId = localStorage.getItem('latest_job_id');
+    if (jobId) {
+      // 進捗が終わっていれば結果だけ表示、進捗中ならupdateProgressを呼ぶ
+      fetch(`/progress/?job_id=${jobId}`)
+        .then(response => response.json())
+        .then(data => {
+          if (data.total > 0 && data.done >= data.total) {
+            showResults(jobId);
+            // 結果を表示したらjob_idを消す
+            localStorage.removeItem('latest_job_id');
+          } else if (data.total > 0 && data.done < data.total) {
+            updateProgress(jobId);
+          }
+        });
+    }
+
+    // Reset
+    resetButton.addEventListener('click', function() {
+      filePreview.innerHTML = '';
       progressContainer.style.display = 'none';
       uploadStatus.classList.remove('active');
       submitButton.disabled = false;
+      const resultsContainer = document.getElementById('results-container');
+      if (resultsContainer) {
+          resultsContainer.innerHTML = '';
+      }
     });
-  });
 
-  // ★ ページロード時にlocalStorageからjob_idを取得して結果を表示
-  const jobId = localStorage.getItem('latest_job_id');
-  if (jobId) {
-    // 進捗が終わっていれば結果だけ表示、進捗中ならupdateProgressを呼ぶ
-    fetch(`/progress/?job_id=${jobId}`)
-      .then(response => response.json())
-      .then(data => {
-        if (data.total > 0 && data.done >= data.total) {
-          showResults(jobId);
-          // 結果を表示したらjob_idを消す
-          localStorage.removeItem('latest_job_id');
-        } else if (data.total > 0 && data.done < data.total) {
-          updateProgress(jobId);
-        }
-      });
-  }
-
-  // より直感的なアップロードボタンの動作
-  submitButton.addEventListener('click', function(e) {
-    if (!fileInput.files || fileInput.files.length === 0) {
-      e.preventDefault();
-      fileInput.click();
-    }
-  });
-  
-  // Reset
-  resetButton.addEventListener('click', function() {
-    filePreview.innerHTML = '';
-    progressContainer.style.display = 'none';
-    uploadStatus.classList.remove('active');
-    submitButton.disabled = false;
-    // ★ ここを追加
-    const resultsContainer = document.getElementById('results-container');
-    if (resultsContainer) {
-        resultsContainer.innerHTML = '';
-    }
-  });
+    console.log(fileInput); // nullでないことを確認
 });
 </script>
 {% endblock %}

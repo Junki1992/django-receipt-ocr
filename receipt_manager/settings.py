@@ -10,8 +10,8 @@ load_dotenv()
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.getenv('DJANGO_SECRET_KEY')
-DEBUG = True
-ALLOWED_HOSTS = ['34.146.60.14', 'localhost', '127.0.0.1']
+DEBUG = False
+ALLOWED_HOSTS = ['34.146.60.14', 'localhost', '127.0.0.1', 'receiptly.net', 'www.receiptly.net']
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -41,7 +41,7 @@ ROOT_URLCONF = 'receipt_manager.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / "templates", BASE_DIR / "receipts" / "templates"],
+        'DIRS': [BASE_DIR / "templates"],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -151,3 +151,10 @@ CACHES = {
         'LOCATION': 'unique-snowflake',
     }
 }
+
+# ファイルアップロード関連の設定（settings.pyの末尾に追加）
+FILE_UPLOAD_MAX_MEMORY_SIZE = 20 * 1024 * 1024  # 20MB
+DATA_UPLOAD_MAX_MEMORY_SIZE = 20 * 1024 * 1024  # 20MB
+
+# 一時ファイルの保存先
+FILE_UPLOAD_TEMP_DIR = '/tmp'

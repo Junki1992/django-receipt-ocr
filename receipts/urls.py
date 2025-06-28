@@ -7,6 +7,7 @@ urlpatterns = [
     path('', views.index, name='index'),
     path('export/csv/', views.export_receipts_csv, name='export_receipts_csv'),
     path('dashboard/', views.dashboard, name='dashboard'),
+    path('dashboard/receipts/', views.receipt_dashboard, name='dashboard_receipts'),
     path('privacy/', views.privacy_policy_view, name='privacy'),
     path('terms/', views.terms_of_service_view, name='terms'),
     path('signup/', views.signup, name='signup'),
