@@ -12,3 +12,13 @@ venv
 *bkup*
 *bkup.*
 *.bkup
+
+# 画像ファイルを除外（receiptsディレクトリ内）
+receipts/*.JPG
+receipts/*.jpg
+receipts/*.jpeg
+receipts/*.png
+receipts/*.gif
+receipts/*.webp
+receipts/*.heic
+receipts/*.heif
