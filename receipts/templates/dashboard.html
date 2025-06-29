@@ -87,30 +87,84 @@
     {% endif %}
 
     <h2 class="section-title">明細一覧</h2>
-    <table id="details-table" class="display">
-      <thead>
-        <tr>
-          <th>日付</th>
-          <th>ユーザー</th>
-          <th>合計金額</th>
-          <th>カテゴリ</th>
-          <th>店舗名</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for r in receipt_summaries %}
-        <tr data-id="{{ r.id }}" class="clickable-row">
-          <td>{{ r.uploaded_at|date:"Y-m-d H:i" }}</td>
-          <td>{{ r.user }}</td>
-          <td><span class="amount-badge">¥{{ r.total|intcomma }}</span></td>
-          <td>{{ r.category }}</td>
-          <td>
-            {{ r.shop_name }}{% if r.store_name %} / {{ r.store_name }}{% endif %}
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+    
+    <!-- フィルタリング機能を追加 -->
+    <button class="filter-toggle" id="filter-toggle">
+      <i class="fas fa-chevron-down"></i>
+      フィルター
+    </button>
+
+    <div class="filter-section filter-content" id="filter-content">
+      <div class="filter-row">
+        <div class="filter-group">
+          <label for="month-filter">月別フィルター:</label>
+          <select id="month-filter" class="filter-select">
+            <option value="">全期間</option>
+            {% for row in monthly %}
+            <option value="{{ row.month|date:'Y-m' }}">{{ row.month|date:"Y年m月" }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        
+        <div class="filter-group">
+          <label for="category-filter">カテゴリフィルター:</label>
+          <select id="category-filter" class="filter-select">
+            <option value="">全カテゴリ</option>
+            {% for row in category_summary %}
+            <option value="{{ row.category|default:'(未分類)' }}">{{ row.category|default:"(未分類)" }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        
+        <div class="filter-group">
+          <label for="date-range-start">期間:</label>
+          <input type="date" id="date-range-start" class="filter-input" placeholder="開始日">
+          <span>〜</span>
+          <input type="date" id="date-range-end" class="filter-input" placeholder="終了日">
+        </div>
+        
+        <div class="filter-group">
+          <button id="clear-filters" class="filter-btn clear-btn">フィルタークリア</button>
+          <button id="apply-filters" class="filter-btn apply-btn">フィルター適用</button>
+        </div>
+      </div>
+      
+      <div class="filter-summary">
+        <span id="filter-status">全件表示中</span>
+        <span id="filtered-count"></span>
+      </div>
+    </div>
+
+    <!-- 明細一覧 -->
+    <div class="dashboard-table-wrapper">
+      <table id="details-table">
+        <thead>
+          <tr>
+            <th style="background: linear-gradient(90deg, #4fd1c5 0%, #38b2ac 100%)!important; color: #fff!important;">日付</th>
+            <th style="background: linear-gradient(90deg, #4fd1c5 0%, #38b2ac 100%)!important; color: #fff!important;">ユーザー</th>
+            <th style="background: linear-gradient(90deg, #4fd1c5 0%, #38b2ac 100%)!important; color: #fff!important;">合計金額</th>
+            <th style="background: linear-gradient(90deg, #4fd1c5 0%, #38b2ac 100%)!important; color: #fff!important;">カテゴリ</th>
+            <th style="background: linear-gradient(90deg, #4fd1c5 0%, #38b2ac 100%)!important; color: #fff!important;">店舗名</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in receipt_summaries %}
+          <tr data-id="{{ r.id }}" class="clickable-row" 
+              data-month="{{ r.uploaded_at|date:'Y-m' }}"
+              data-category="{{ r.category }}"
+              data-date="{{ r.uploaded_at|date:'Y-m-d' }}">
+            <td>{{ r.uploaded_at|date:"Y-m-d H:i" }}</td>
+            <td>{{ r.user }}</td>
+            <td><span class="amount-badge">¥{{ r.total|intcomma }}</span></td>
+            <td>{{ r.category }}</td>
+            <td>
+              {{ r.shop_name }}{% if r.store_name %} / {{ r.store_name }}{% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
 
     <a href="{% url 'index' %}" style="width:100%; display:block; text-align:left;">← 戻る</a>
   </div>
@@ -192,12 +246,8 @@ document.addEventListener('DOMContentLoaded', function() {
 <script>
 $(document).ready(function() {
   const table = $('#details-table').DataTable({
-    responsive: {
-      details: {
-        type: 'column',
-        target: 'tr'
-      }
-    },
+    responsive: false,
+    scrollX: true,
     columnDefs: [
       { responsivePriority: 1, targets: 0 }, // 日付
       { responsivePriority: 2, targets: 2 }, // 合計金額
@@ -211,9 +261,118 @@ $(document).ready(function() {
     }
   });
 
+  // フィルタリング機能
+  let currentFilters = {
+    month: '',
+    category: '',
+    dateStart: '',
+    dateEnd: ''
+  };
+
+  // カスタムフィルタリング関数
+  function customFilter() {
+    return function(settings, data, dataIndex) {
+      const row = $(table.row(dataIndex).node());
+      const month = row.data('month');
+      const category = row.data('category');
+      const date = row.data('date');
+      
+      // 月別フィルター
+      if (currentFilters.month && month !== currentFilters.month) {
+        return false;
+      }
+      
+      // カテゴリフィルター
+      if (currentFilters.category && category !== currentFilters.category) {
+        return false;
+      }
+      
+      // 日付範囲フィルター
+      if (currentFilters.dateStart && date < currentFilters.dateStart) {
+        return false;
+      }
+      if (currentFilters.dateEnd && date > currentFilters.dateEnd) {
+        return false;
+      }
+      
+      return true;
+    };
+  }
+
+  // フィルター適用
+  $('#apply-filters').on('click', function() {
+    currentFilters.month = $('#month-filter').val();
+    currentFilters.category = $('#category-filter').val();
+    currentFilters.dateStart = $('#date-range-start').val();
+    currentFilters.dateEnd = $('#date-range-end').val();
+    
+    // DataTablesのカスタムフィルターを適用
+    $.fn.dataTable.ext.search.push(customFilter());
+    table.draw();
+    
+    // フィルター状態を更新
+    updateFilterStatus();
+  });
+
+  // フィルタークリア
+  $('#clear-filters').on('click', function() {
+    $('#month-filter').val('');
+    $('#category-filter').val('');
+    $('#date-range-start').val('');
+    $('#date-range-end').val('');
+    
+    currentFilters = {
+      month: '',
+      category: '',
+      dateStart: '',
+      dateEnd: ''
+    };
+    
+    // カスタムフィルターを削除
+    $.fn.dataTable.ext.search.pop();
+    table.draw();
+    
+    // フィルター状態を更新
+    updateFilterStatus();
+  });
+
+  // フィルター状態の更新
+  function updateFilterStatus() {
+    const visibleRows = table.rows({search: 'applied'}).count();
+    const totalRows = table.rows().count();
+    
+    let statusText = '';
+    const filters = [];
+    
+    if (currentFilters.month) {
+      filters.push(`月: ${$('#month-filter option:selected').text()}`);
+    }
+    if (currentFilters.category) {
+      filters.push(`カテゴリ: ${$('#category-filter option:selected').text()}`);
+    }
+    if (currentFilters.dateStart || currentFilters.dateEnd) {
+      const start = currentFilters.dateStart || '開始日';
+      const end = currentFilters.dateEnd || '終了日';
+      filters.push(`期間: ${start} 〜 ${end}`);
+    }
+    
+    if (filters.length > 0) {
+      statusText = `${filters.join(', ')} でフィルター中`;
+    } else {
+      statusText = '全件表示中';
+    }
+    
+    $('#filter-status').text(statusText);
+    $('#filtered-count').text(`(${visibleRows}/${totalRows}件)`);
+  }
+
+  // 初期状態の更新
+  updateFilterStatus();
+
   // DataTablesの描画後にカンマ区切りを再適用
   table.on('draw', function() {
     updateDashboardSummary();
+    updateFilterStatus();
   });
 
   // 初回ロード時にもカンマ区切りを適用
@@ -225,6 +384,25 @@ $(document).ready(function() {
     const id = $(this).data('id');
     if (id) {
       window.location.href = '/receipt/' + id + '/edit';
+    }
+  });
+
+  // フィルター折りたたみ機能
+  $('#filter-toggle').on('click', function() {
+    const $content = $('#filter-content');
+    const $toggle = $(this);
+    const $icon = $toggle.find('i');
+    
+    if ($content.hasClass('collapsed')) {
+      // 展開
+      $content.removeClass('collapsed');
+      $toggle.removeClass('collapsed');
+      $icon.removeClass('fa-chevron-left').addClass('fa-chevron-down');
+    } else {
+      // 折りたたみ
+      $content.addClass('collapsed');
+      $toggle.addClass('collapsed');
+      $icon.removeClass('fa-chevron-down').addClass('fa-chevron-left');
     }
   });
 });
@@ -258,6 +436,102 @@ $(document).ready(function() {
 .chart-switcher button.active {
   background: #38b2ac;
   transform: translateY(-2px) scale(1.04);
+}
+
+/* フィルタリングセクションのスタイル */
+.filter-section {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  align-items: end;
+  margin-bottom: 15px;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 150px;
+}
+
+.filter-group label {
+  font-weight: bold;
+  color: #495057;
+  font-size: 0.9em;
+}
+
+.filter-select,
+.filter-input {
+  padding: 8px 12px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 0.9em;
+  background: white;
+}
+
+.filter-select:focus,
+.filter-input:focus {
+  outline: none;
+  border-color: #4fd1c5;
+  box-shadow: 0 0 0 2px rgba(79, 209, 197, 0.2);
+}
+
+.filter-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.9em;
+}
+
+.apply-btn {
+  background: #4fd1c5;
+  color: white;
+}
+
+.apply-btn:hover {
+  background: #38b2ac;
+}
+
+.clear-btn {
+  background: #6c757d;
+  color: white;
+}
+
+.clear-btn:hover {
+  background: #5a6268;
+}
+
+.filter-summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-top: 1px solid #e9ecef;
+  font-size: 0.9em;
+  color: #6c757d;
+}
+
+#filter-status {
+  font-weight: bold;
+  color: #495057;
+}
+
+#filtered-count {
+  background: #e9ecef;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-weight: bold;
 }
 
 @media (max-width: 900px) {
@@ -307,6 +581,37 @@ $(document).ready(function() {
   .amount-badge, .category-badge {
     font-size: 0.98em;
     padding: 0.15em 0.6em;
+  }
+  
+  /* モバイル用フィルター調整 */
+  .filter-row {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .filter-group {
+    min-width: auto;
+    width: 100%;
+  }
+  
+  .filter-group input,
+  .filter-group select {
+    width: 100%;
+  }
+  .dashboard-table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    margin-bottom: 1.5em;
+    padding-bottom: 0.5em;
+  }
+  #details-table {
+    min-width: 600px;
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
   }
 }
 
@@ -426,14 +731,9 @@ hr {
 }
 
 /* テーブルヘッダー */
-#details-table thead th {
-  background: linear-gradient(90deg, #38b2ac 0%, #4fd1c5 100%);
+#details-table th {
+  background: linear-gradient(90deg, #4fd1c5 0%, #38b2ac 100%);
   color: #fff;
-  font-weight: bold;
-  border: none;
-  padding: 0.8em 0.5em;
-  font-size: 1em;
-  letter-spacing: 0.03em;
 }
 
 /* テーブル行 */
@@ -454,14 +754,13 @@ hr {
 
 /* 金額バッジ */
 .amount-badge {
-  background: #4fd1c5;
+  background: linear-gradient(90deg, #4fd1c5 0%, #38b2ac 100%);
   color: #fff;
   border-radius: 1em;
   padding: 0.2em 0.8em;
   font-weight: bold;
-  font-size: 1em;
   display: inline-block;
-  letter-spacing: 0.02em;
+  font-size: 1em;
 }
 
 /* カテゴリバッジ */
@@ -507,6 +806,61 @@ hr {
 }
 #details-table tbody tr.clickable-row:hover {
   background: #e0f7fa;
+}
+
+/* フィルター折りたたみ機能 */
+.filter-toggle {
+  background: #4fd1c5;
+  color: white;
+  border: none;
+  padding: 7px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 1em;
+  box-shadow: none;
+  min-width: 0;
+  width: fit-content;
+  transition: background 0.2s, box-shadow 0.2s;
+}
+.filter-toggle:hover {
+  background: #38b2ac;
+}
+.filter-toggle.collapsed {
+  margin-bottom: 0;
+}
+.filter-content {
+  transition: max-height 0.3s, opacity 0.3s, margin 0.3s;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+.filter-content.collapsed {
+  max-height: 0;
+  opacity: 0;
+  margin-bottom: 0;
+  padding: 0 !important;
+  border: none !important;
+}
+@media (max-width: 900px) {
+  .filter-toggle {
+    width: 100%;
+    justify-content: flex-start;
+    font-size: 1em;
+    padding: 10px 10px;
+    margin-bottom: 0;
+    border-radius: 6px;
+  }
+  .filter-content {
+    margin-bottom: 12px;
+  }
+}
+
+#details-table td:last-child {
+  text-align: left;
 }
 </style>
 
@@ -601,4 +955,28 @@ function updateDashboardSummary() {
   });
 }
 </script>
+
+<style>
+@media (max-width: 900px) {
+  .dashboard-table-wrapper,
+  .dataTables_wrapper {
+    overflow-x: auto !important;
+    width: 100vw !important;
+    background: #fff !important;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    margin-bottom: 1.5em;
+    padding-bottom: 0.5em;
+  }
+  #details-table {
+    min-width: 600px !important;
+    width: 100% !important;
+    background: #fff !important;
+  }
+  #details-table th, #details-table td {
+    background: #fff !important;
+    color: #222 !important;
+  }
+}
+</style>
 {% endblock %}

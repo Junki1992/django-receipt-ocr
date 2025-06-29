@@ -589,6 +589,7 @@ def extract_items(text):
 
 def extract_total(text):
     """OCRテキストから合計金額を抽出する関数（現場パターン対応版）"""
+<<<<<<< HEAD
     import re
     
     # パターン1: 「差引合計 ¥金額」の形式（最優先）
@@ -662,6 +663,88 @@ def extract_total(text):
     
     # 最終手段：1円でも返す
     return ""
+=======
+    try:
+        import re
+        
+        if not text:
+            return ""
+        
+        # パターン1: 「差引合計 ¥金額」の形式（最優先）
+        match = re.search(r'差引合計[^\d]*([0-9,]+)', text)
+        if match:
+            amount = int(match.group(1).replace(',', ''))
+            return str(amount)
+        
+        # パターン2: 「¥金額-」の形式（領収証の合計金額）
+        match = re.search(r'¥([0-9,]+)-', text)
+        if match:
+            amount = int(match.group(1).replace(',', ''))
+            return str(amount)
+        
+        # パターン3: 「合計 ¥金額」の形式
+        match = re.search(r'合計\s*¥([0-9,]+)', text)
+        if match:
+            amount = int(match.group(1).replace(',', ''))
+            return str(amount)
+        
+        # パターン4: 「お買上点数」の前にある金額（合計金額の可能性が高い）
+        match = re.search(r'([0-9,]{3,7})\s*お買上点数', text)
+        if match:
+            amount = int(match.group(1).replace(',', ''))
+            return str(amount)
+        
+        # パターン5: 「小計」と「税額」から合計を計算
+        subtotal_match = re.search(r'小計\s*¥([0-9,]+)', text)
+        tax_match = re.search(r'税額\s*¥([0-9,]+)', text)
+        if subtotal_match and tax_match:
+            subtotal = int(subtotal_match.group(1).replace(',', ''))
+            tax = int(tax_match.group(1).replace(',', ''))
+            total = subtotal + tax
+            return str(total)
+        
+        # パターン6: 「¥金額」の最大値を返す（お釣りや預かり金は除外）
+        exclude_patterns = [
+            r'お釣り\s*¥([0-9,]+)',
+            r'お預り\s*¥([0-9,]+)',
+            r'預かり\s*¥([0-9,]+)',
+            r'チNo.*?¥([0-9,]+)',
+            r'代として\s*¥([0-9,]+)'
+        ]
+        exclude_amounts = set()
+        for pattern in exclude_patterns:
+            matches = re.findall(pattern, text)
+            for match in matches:
+                exclude_amounts.add(int(match.replace(',', '')))
+        
+        matches = re.findall(r'¥([0-9,]+)', text)
+        valid_amounts = []
+        for match in matches:
+            amount = int(match.replace(',', ''))
+            if amount not in exclude_amounts and 10 <= amount <= 100000:
+                valid_amounts.append(amount)
+        
+        if valid_amounts:
+            return str(max(valid_amounts))
+        
+        # パターン7: 全体から最大値を取得（最終手段）
+        all_amounts = []
+        numbers = re.findall(r'([0-9,]{3,7})', text)
+        for num in numbers:
+            clean_num = num.replace(',', '')
+            if clean_num.isdigit():
+                amount = int(clean_num)
+                if 100 <= amount <= 100000:
+                    all_amounts.append(amount)
+        if all_amounts:
+            return str(max(all_amounts))
+        
+        # 最終手段：空文字を返す
+        return ""
+    except Exception as e:
+        print(f"[ERROR] extract_total関数でエラーが発生: {e}")
+        return ""
+>>>>>>> eff4d69 (初期バージョン完成)
 
 def extract_store_name(text, store_keywords_dict):
     import re
@@ -1166,6 +1249,7 @@ def extract_product_items(text):
 
 @login_required
 def receipt_dashboard(request):
+<<<<<<< HEAD
     # 一般ユーザーは自分のレシートだけ、管理者は全件
     if request.user.is_superuser:
         receipts = Receipt.objects.all().order_by('-uploaded_at')
@@ -1183,24 +1267,21 @@ def receipt_dashboard(request):
         items = receipt.product_items.all()
         if items.exists():
             total_amount += sum([item.price for item in items])
+=======
+    try:
+        # ユーザーフィルタリング
+        if request.user.is_superuser:
+            receipts = Receipt.objects.all().order_by('-uploaded_at')
+>>>>>>> eff4d69 (初期バージョン完成)
         else:
-            total_amount += getattr(receipt, 'total_amount', 0) or 0
+            receipts = Receipt.objects.filter(user=request.user).order_by('-uploaded_at')
 
-    # カテゴリ別集計
-    category_summary = (
-        receipts.values('category')
-        .annotate(count=Count('id'))
-        .order_by('category')
-    )
-    for c in category_summary:
-        c['total'] = 0
-        for receipt in receipts.filter(category=c['category']):
-            items = receipt.product_items.all()
-            if items.exists():
-                c['total'] += sum([item.price for item in items])
-            else:
-                c['total'] += getattr(receipt, 'total_amount', 0) or 0
+        # ページネーション処理を先に行う
+        paginator = Paginator(receipts, 20)
+        page_number = request.GET.get('page')
+        page_obj = paginator.get_page(page_number)
 
+<<<<<<< HEAD
     # グラフ用データ
     category_labels = [c['category'] for c in category_summary]
     category_data = [c['total'] for c in category_summary]
@@ -1255,10 +1336,147 @@ def receipt_edit(request, receipt_id):
             items_text = "\n".join([f"{item['name']} {item['price']}円" for item in items]) if items else ''
             # --- 全てロック中なら商品明細は上書きせず、OCRテキスト欄のみ上書き ---
             if all_locked:
+=======
+        # ページネーション後のレシートに対して金額計算を行う
+        calculated_totals = {}
+        for receipt in page_obj:
+            try:
+                items = receipt.product_items.all()
+                if items.exists():
+                    calculated_totals[receipt.id] = sum([item.price for item in items])
+                else:
+                    calculated_totals[receipt.id] = getattr(receipt, 'total_amount', 0) or 0
+            except Exception as e:
+                print(f"[ERROR] receipt {receipt.id} の金額計算エラー: {e}")
+                calculated_totals[receipt.id] = 0
+
+        # 全体の集計（ページネーション前のデータを使用）
+        total_count = receipts.count()
+        
+        # 全体の合計金額計算
+        all_calculated_totals = {}
+        for receipt in receipts:
+            try:
+                items = receipt.product_items.all()
+                if items.exists():
+                    all_calculated_totals[receipt.id] = sum([item.price for item in items])
+                else:
+                    all_calculated_totals[receipt.id] = getattr(receipt, 'total_amount', 0) or 0
+            except Exception as e:
+                print(f"[ERROR] receipt {receipt.id} の金額計算エラー: {e}")
+                all_calculated_totals[receipt.id] = 0
+        
+        total_amount = sum(all_calculated_totals.values())
+
+        # カテゴリ別集計（全体のデータを使用）
+        try:
+            category_summary = (
+                receipts.values('category')
+                .annotate(count=Count('id'))
+                .order_by('category')
+            )
+            for c in category_summary:
+                c['total'] = 0
+                for receipt in receipts.filter(category=c['category']):
+                    try:
+                        c['total'] += all_calculated_totals[receipt.id]
+                    except Exception as e:
+                        print(f"[ERROR] category {c['category']} receipt {receipt.id} の金額計算エラー: {e}")
+                        continue
+        except Exception as e:
+            print(f"[ERROR] カテゴリ集計エラー: {e}")
+            category_summary = []
+
+        # グラフ用データ
+        category_labels = [c['category'] for c in category_summary]
+        category_data = [c['total'] for c in category_summary]
+        
+        return render(request, 'receipts/dashboard_receipts.html', {
+            'receipts': page_obj,
+            'page_obj': page_obj,
+            'total_count': total_count,
+            'total_amount': total_amount,
+            'calculated_totals': calculated_totals,
+            'category_summary': category_summary,
+            'category_labels': category_labels,
+            'category_data': category_data,
+        })
+    except Exception as e:
+        import traceback
+        error_message = traceback.format_exc()
+        print(error_message)
+        messages.error(request, f'ダッシュボードの表示中にエラーが発生しました: {error_message}')
+        return render(request, 'receipts/dashboard_receipts.html', {
+            'receipts': [],
+            'page_obj': None,
+            'total_count': 0,
+            'total_amount': 0,
+            'category_summary': [],
+            'category_labels': [],
+            'category_data': [],
+        })
+
+@login_required
+def receipt_edit(request, receipt_id):
+    try:
+        # 一般ユーザーは自分のレシートだけ、管理者は全件
+        if request.user.is_superuser:
+            receipt = get_object_or_404(Receipt, id=receipt_id)
+        else:
+            receipt = get_object_or_404(Receipt, id=receipt_id, user=request.user)
+        
+        if request.method == 'POST':
+            # 変更前の値を保存
+            original_data = {
+                'text': receipt.text,
+                'shop_name': receipt.shop_name,
+                'store_name': receipt.store_name,
+                'memo': receipt.memo,
+                'category': receipt.category,
+                'total_amount': receipt.total_amount,
+                'issue_date': receipt.issue_date,
+            }
+            
+            # 商品明細の変更前の値も保存
+            original_items = {}
+            for item in receipt.product_items.all():
+                original_items[item.id] = {
+                    'name': item.name,
+                    'price': item.price,
+                }
+            
+            # OCRテキストから商品明細を再抽出
+            if request.POST.get('reextract_items'):
+                # --- ロック状態のチェック ---
+                locked_keys = [k for k in request.POST.keys() if k.startswith('product_locked_')]
+                locked_values = [request.POST.get(k) for k in locked_keys]
+                all_locked = locked_values and all(v == '1' for v in locked_values)
+                # OCRテキストから商品明細を抽出
+                items = extract_product_items(receipt.text or "")
+                # 商品明細をテキスト化
+                items_text = "\n".join([f"{item['name']} {item['price']}円" for item in items]) if items else ''
+                # --- 全てロック中なら商品明細は上書きせず、OCRテキスト欄のみ上書き ---
+                if all_locked:
+                    receipt.text = items_text
+                    receipt.save()
+                    messages.info(request, '全ての金額が保護されているため、商品明細は変更せずOCRテキストのみ更新しました。')
+                    return redirect('receipt_edit', receipt_id=receipt.id)
+                # --- 1つでもロック解除されていれば通常通り再抽出・上書き ---
+                # 既存の明細を削除
+                receipt.product_items.all().delete()
+                for item in items:
+                    ProductItem.objects.create(
+                        receipt=receipt,
+                        name=item["name"],
+                        price=item["price"],
+                        category=item.get("category", "その他")
+                    )
+>>>>>>> eff4d69 (初期バージョン完成)
                 receipt.text = items_text
                 receipt.save()
-                messages.info(request, '全ての金額が保護されているため、商品明細は変更せずOCRテキストのみ更新しました。')
+                messages.success(request, 'OCRテキストから商品明細を再抽出しました。')
                 return redirect('receipt_edit', receipt_id=receipt.id)
+<<<<<<< HEAD
             # --- 1つでもロック解除されていれば通常通り再抽出・上書き ---
             # 既存の明細を削除
             receipt.product_items.all().delete()
@@ -1410,6 +1628,155 @@ def receipt_edit(request, receipt_id):
     }
     
     return render(request, 'receipts/receipt_edit.html', context)
+=======
+            
+            # フォームデータの処理
+            # 一般ユーザーはユーザー変更を許可しない
+            if request.user.is_superuser:
+                user_id = request.POST.get('user')
+                if user_id:
+                    try:
+                        User = get_user_model()
+                        user = User.objects.get(id=user_id)
+                        receipt.user = user
+                    except User.DoesNotExist:
+                        messages.error(request, '指定されたユーザーが見つかりません。')
+                        return redirect('dashboard_receipts')
+            
+            receipt.text = request.POST.get('text', '')
+            shop_name_post = request.POST.get('shop_name', None)
+            if shop_name_post not in [None, '']:
+                receipt.shop_name = shop_name_post
+            store_name_post = request.POST.get('store_name', None)
+            if store_name_post not in [None, '']:
+                receipt.store_name = store_name_post
+            receipt.memo = request.POST.get('memo', '')
+            receipt.category = request.POST.get('category', 'その他')
+            
+            # ファイルのアップロード処理
+            file_changed = False
+            if 'file' in request.FILES:
+                receipt.file = request.FILES['file']
+                file_changed = True
+            
+            # 商品明細(ProductItem)の更新
+            items_changed = False
+            for item in receipt.product_items.all():
+                name_key = f'product_name_{item.id}'
+                price_key = f'product_price_{item.id}'
+                new_name = request.POST.get(name_key, item.name)
+                new_price_raw = request.POST.get(price_key, None)
+                
+                try:
+                    if new_price_raw is None or new_price_raw == '':
+                        new_price = item.price
+                    else:
+                        new_price = int(new_price_raw)
+                        if new_price < 0:
+                            new_price = item.price
+                except Exception as e:
+                    print(f"[DEBUG] 金額変換エラー: {e}, item.id={item.id}, 入力値={new_price_raw}")
+                    new_price = item.price
+                
+                # 変更があったかチェック
+                if (new_name != original_items[item.id]['name'] or 
+                    new_price != original_items[item.id]['price']):
+                    items_changed = True
+                
+                item.name = new_name
+                item.price = new_price
+                item.save()
+            
+            # 合計金額の保存処理をロック状態で分岐
+            total_amount_post = request.POST.get('total_amount', None)
+            locked = request.POST.get('total_amount_locked', '1')
+            total_amount_changed = False
+            if locked == '0' and total_amount_post not in [None, '']:
+                try:
+                    new_total = int(total_amount_post)
+                    if new_total != original_data['total_amount']:
+                        total_amount_changed = True
+                    receipt.total_amount = new_total
+                except Exception:
+                    pass
+            
+            issue_date_post = request.POST.get('issue_date', None)
+            issue_date_changed = False
+            if issue_date_post not in [None, '']:
+                try:
+                    if issue_date_post != str(original_data['issue_date'] or ''):
+                        issue_date_changed = True
+                    receipt.issue_date = issue_date_post
+                except Exception:
+                    pass
+            
+            # 変更があったかチェック
+            data_changed = (
+                receipt.text != original_data['text'] or
+                receipt.shop_name != original_data['shop_name'] or
+                receipt.store_name != original_data['store_name'] or
+                receipt.memo != original_data['memo'] or
+                receipt.category != original_data['category'] or
+                file_changed or
+                items_changed or
+                total_amount_changed or
+                issue_date_changed
+            )
+            
+            receipt.save()
+            
+            if data_changed:
+                messages.success(request, 'レシートが正常に更新されました。')
+            else:
+                messages.info(request, '変更はありませんでした。')
+            
+            return redirect('dashboard_receipts')
+        
+        # ユーザー一覧を取得（管理者のみ）
+        users = []
+        if request.user.is_superuser:
+            User = get_user_model()
+            users = User.objects.all()
+        
+        # カテゴリ選択肢
+        categories = [
+            '食費', '交通費', '日用品', '医療費', '娯楽費', 
+            '衣類費', '光熱費', '通信費', 'その他'
+        ]
+        
+        # 合計金額（total_amountがあればそれを優先）
+        try:
+            if getattr(receipt, 'total_amount', None) not in [None, '', 0]:
+                total_amount = receipt.total_amount
+            else:
+                items = receipt.product_items.all()
+                if items.exists():
+                    total_amount = sum([item.price for item in items])
+                else:
+                    total_str = extract_total(receipt.text or "")
+                    try:
+                        total_amount = int(total_str) if total_str else ''
+                    except (ValueError, TypeError):
+                        total_amount = ''
+        except Exception as e:
+            print(f"[ERROR] total_amount計算エラー: {e}")
+            total_amount = ''
+
+        context = {
+            'receipt': receipt,
+            'users': users,
+            'categories': categories,
+            'total_amount': total_amount,
+        }
+        
+        return render(request, 'receipts/receipt_edit.html', context)
+    except Exception as e:
+        print(f"[ERROR] receipt_edit関数でエラーが発生: {e}")
+        import traceback
+        traceback.print_exc()
+        messages.error(request, 'レシートの編集中にエラーが発生しました。')
+        return redirect('dashboard_receipts')
+>>>>>>> eff4d69 (初期バージョン完成)
 
 @csrf_exempt
 def receipt_delete(request, pk):

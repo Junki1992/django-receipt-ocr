@@ -1,5 +1,5 @@
 from django import forms
-from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib.auth.models import User
 from django.core.validators import RegexValidator
 from .models import Receipt
@@ -63,4 +63,23 @@ class SignUpForm(UserCreationForm):
         # 重複チェック
         if User.objects.filter(username=username).exists():
             raise forms.ValidationError('このユーザー名は既に使用されています。')
+        return username
+
+class CustomLoginForm(AuthenticationForm):
+    """メールアドレスまたはユーザー名でログインできるフォーム"""
+    username = forms.CharField(
+        label='ユーザー名またはメールアドレス',
+        widget=forms.TextInput(attrs={'autofocus': True})
+    )
+    
+    def clean_username(self):
+        username = self.cleaned_data.get('username')
+        # メールアドレスの形式かチェック
+        if '@' in username:
+            # メールアドレスの場合、ユーザー名に変換
+            try:
+                user = User.objects.get(email=username)
+                return user.username
+            except User.DoesNotExist:
+                raise forms.ValidationError('このメールアドレスは登録されていません。')
         return username

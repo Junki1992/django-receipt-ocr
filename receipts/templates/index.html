@@ -452,6 +452,22 @@ document.addEventListener('DOMContentLoaded', function() {
                             submitButton.disabled = false;
                             showResults(jobId);
                             localStorage.removeItem('latest_job_id');
+<<<<<<< HEAD
+=======
+                            
+                            // 成功メッセージを表示してからダッシュボードにリダイレクト
+                            const resultsContainer = document.getElementById('results-container');
+                            resultsContainer.innerHTML = `
+                                <div style="text-align: center; margin-top: 1em; padding: 1em; background: #d4edda; border-radius: 0.5em;">
+                                    <p><strong>${data.total}件のレシートが正常にアップロードされました！</strong></p>
+                                    <p>3秒後にダッシュボードに移動します...</p>
+                                </div>
+                            `;
+                            
+                            setTimeout(() => {
+                                window.location.href = '/dashboard/';
+                            }, 3000);
+>>>>>>> eff4d69 (初期バージョン完成)
                         }, 1000);
                     } else {
                         setTimeout(() => updateProgress(jobId, retryCount + 1), 1000);
@@ -498,6 +514,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     return;
                 }
                 
+<<<<<<< HEAD
+=======
+                // 成功したファイルがあるかチェック
+                const successCount = data.results.filter(item => item.status === "OK").length;
+                const totalCount = data.results.length;
+                
+>>>>>>> eff4d69 (初期バージョン完成)
                 let html = '<h3>処理結果</h3><table class="result-table"><tr><th>ファイル名</th><th>ステータス</th><th>メッセージ</th></tr>';
                 data.results.forEach(item => {
                     html += `<tr>
@@ -507,7 +530,31 @@ document.addEventListener('DOMContentLoaded', function() {
                     </tr>`;
                 });
                 html += '</table>';
+<<<<<<< HEAD
                 resultsContainer.innerHTML = html;
+=======
+                
+                // 成功したファイルがある場合は、3秒後にダッシュボードにリダイレクト
+                if (successCount > 0) {
+                    html += `<div style="text-align: center; margin-top: 1em; padding: 1em; background: #d4edda; border-radius: 0.5em;">
+                        <p><strong>${successCount}件のレシートが正常にアップロードされました！</strong></p>
+                        <p>3秒後にダッシュボードに移動します...</p>
+                    </div>`;
+                    
+                    resultsContainer.innerHTML = html;
+                    
+                    // 3秒後にダッシュボードにリダイレクト
+                    setTimeout(() => {
+                        window.location.href = '/dashboard/';
+                    }, 3000);
+                } else {
+                    html += `<div style="text-align: center; margin-top: 1em; padding: 1em; background: #f8d7da; border-radius: 0.5em;">
+                        <p><strong>アップロードに失敗しました。</strong></p>
+                        <p>ファイル形式やサイズを確認してください。</p>
+                    </div>`;
+                    resultsContainer.innerHTML = html;
+                }
+>>>>>>> eff4d69 (初期バージョン完成)
             })
             .catch(err => {
                 console.error('Result check error:', err);

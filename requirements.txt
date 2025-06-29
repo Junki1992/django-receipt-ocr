@@ -1,0 +1,10 @@
+Django>=4.2,<5.0
+pillow
+pytesseract
+opencv-python
+tensorflow
+google-cloud-vision
+celery
+gunicorn
+python-dotenv
+django-environ

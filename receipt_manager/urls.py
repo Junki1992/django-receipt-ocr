@@ -22,13 +22,14 @@ from django.contrib.auth import views as auth_views
 from receipts.admin import my_admin_site
 from receipts import views
 from receipts.views import upload_progress
+from receipts.forms import CustomLoginForm
 
 urlpatterns = [
     path("admin/", my_admin_site.urls),
     # path('accounts/', include('django.contrib.auth.urls')), # この行をコメントアウトまたは削除
     
     # 認証関連のURLを個別に設定
-    path('accounts/login/', auth_views.LoginView.as_view(), name='login'),
+    path('accounts/login/', auth_views.LoginView.as_view(form_class=CustomLoginForm), name='login'),
     path('accounts/logout/', auth_views.LogoutView.as_view(next_page='login'), name='logout'),
     path('accounts/password_change/', auth_views.PasswordChangeView.as_view(), name='password_change'),
     path('accounts/password_change/done/', auth_views.PasswordChangeDoneView.as_view(), name='password_change_done'),
@@ -44,3 +45,7 @@ urlpatterns = [
 
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+# 静的ファイルの配信（開発環境と本番環境の両方で）
+urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

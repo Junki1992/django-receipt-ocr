@@ -22,14 +22,14 @@
     
     {% if form.errors %}
       <div class="auth-error">
-        ユーザー名またはパスワードが正しくありません。
+        ユーザー名またはメールアドレス、パスワードが正しくありません。
       </div>
     {% endif %}
     
     <form method="post" class="auth-form" autocomplete="on">
       {% csrf_token %}
       <div>
-        <label for="id_username">ユーザー名</label>
+        <label for="id_username">ユーザー名またはメールアドレス</label>
         {{ form.username }}
       </div>
       <div>
