@@ -7,3 +7,8 @@ __pycache__/
 media/
 media/
 venv
+
+# バックアップファイルを除外
+*bkup*
+*bkup.*
+*.bkup
