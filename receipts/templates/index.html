@@ -452,8 +452,6 @@ document.addEventListener('DOMContentLoaded', function() {
                             submitButton.disabled = false;
                             showResults(jobId);
                             localStorage.removeItem('latest_job_id');
-<<<<<<< HEAD
-=======
                             
                             // 成功メッセージを表示してからダッシュボードにリダイレクト
                             const resultsContainer = document.getElementById('results-container');
@@ -467,7 +465,6 @@ document.addEventListener('DOMContentLoaded', function() {
                             setTimeout(() => {
                                 window.location.href = '/dashboard/';
                             }, 3000);
->>>>>>> eff4d69 (初期バージョン完成)
                         }, 1000);
                     } else {
                         setTimeout(() => updateProgress(jobId, retryCount + 1), 1000);
@@ -514,13 +511,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     return;
                 }
                 
-<<<<<<< HEAD
-=======
                 // 成功したファイルがあるかチェック
                 const successCount = data.results.filter(item => item.status === "OK").length;
                 const totalCount = data.results.length;
                 
->>>>>>> eff4d69 (初期バージョン完成)
                 let html = '<h3>処理結果</h3><table class="result-table"><tr><th>ファイル名</th><th>ステータス</th><th>メッセージ</th></tr>';
                 data.results.forEach(item => {
                     html += `<tr>
@@ -530,9 +524,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     </tr>`;
                 });
                 html += '</table>';
-<<<<<<< HEAD
-                resultsContainer.innerHTML = html;
-=======
                 
                 // 成功したファイルがある場合は、3秒後にダッシュボードにリダイレクト
                 if (successCount > 0) {
@@ -554,7 +545,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>`;
                     resultsContainer.innerHTML = html;
                 }
->>>>>>> eff4d69 (初期バージョン完成)
             })
             .catch(err => {
                 console.error('Result check error:', err);
