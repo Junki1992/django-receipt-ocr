@@ -22,3 +22,11 @@ receipts/*.gif
 receipts/*.webp
 receipts/*.heic
 receipts/*.heif
+
+# 機械学習モデルファイル
+*.h5
+*.hdf5
+*.pkl
+*.pth
+*.onnx
+*.pb
