@@ -27,8 +27,10 @@
   }
   
   .admin-btn:disabled {
-    background: #ccc;
-    cursor: not-allowed;
+    background: #ccc !important;
+    color: #fff !important;
+    cursor: not-allowed !important;
+    opacity: 0.7;
   }
   
   /* 削除ボタンを控えめに */
@@ -133,8 +135,6 @@
       width: 2em;
     }
   }
-<<<<<<< HEAD
-=======
   
   /* フィルタリングセクションのスタイル */
   .filter-section {
@@ -168,7 +168,7 @@
 
   .filter-select,
   .filter-input {
-    padding: 8px 12px;
+    padding: 6px 12px;
     border: 1px solid #ced4da;
     border-radius: 4px;
     font-size: 0.9em;
@@ -312,7 +312,6 @@
       opacity: 1 !important;
     }
   }
->>>>>>> eff4d69 (初期バージョン完成)
 </style>
 <h1>詳細一覧</h1>
 <div style="margin-bottom: 1em;">
@@ -451,107 +450,48 @@ document.addEventListener('DOMContentLoaded', function() {
   <div style="margin-bottom: 1em;">
     <button type="button" id="select-all-btn" class="admin-btn">全選択</button>
     <button type="button" id="deselect-all-btn" class="admin-btn">選択解除</button>
-    <button type="submit" id="bulk-delete-btn" class="admin-btn" style="background: #dc3545;" onclick="return confirm('選択された領収書を削除しますか？')">選択削除</button>
+    <button type="submit" id="bulk-delete-btn" class="admin-btn" style="background: #dc3545;" disabled>選択削除</button>
   </div>
-
-<<<<<<< HEAD
-<div class="table-responsive">
-  <table class="result-table admin-table" style="width:100%; border-collapse:collapse;">
-    <thead>
-      <tr>
-        <th><input type="checkbox" id="check-all"></th>
-        <th>ID</th>
-        <th>ユーザー</th>
-        <th>日付</th>
-        <th>画像</th>
-        <th>詳細</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for receipt in receipts %}
-      <tr>
-        <td><input type="checkbox" class="row-check" value="{{ receipt.id }}"></td>
-        <td>{{ receipt.id }}</td>
-        <td>{{ receipt.user }}</td>
-        <td>{{ receipt.uploaded_at|date:"Y-m-d H:i" }}</td>
-        <td>
-          {% if receipt.file %}
-            <img src="{{ receipt.file.url }}" style="max-height:60px;">
-          {% endif %}
-        </td>
-        <td>
-          <a href="{% url 'receipt_edit' receipt.id %}" class="admin-btn">編集</a>
-          <form action="{% url 'receipt_delete' receipt.id %}" method="post" style="display: inline;">
-              {% csrf_token %}
-              <button type="submit" class="delete-btn" onclick="return confirm('本当にこの領収書を削除しますか？');">削除</button>
-          </form>
-        </td>
-      </tr>
-      {% empty %}
-      <tr>
-        <td colspan="6">レシートがありません</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</div>
-=======
   <div class="table-responsive">
-    <table class="result-table admin-table">
+    <table class="result-table admin-table" style="width:100%; border-collapse:collapse;">
       <thead>
         <tr>
-          <th><input type="checkbox" id="select-all"></th>
+          <th><input type="checkbox" id="check-all"></th>
           <th>ID</th>
-          <th>アップロード日時</th>
-          <th>店舗名</th>
-          <th>カテゴリ</th>
-          <th>合計金額</th>
           <th>ユーザー</th>
-          <th>操作</th>
+          <th>日付</th>
+          <th>画像</th>
+          <th>詳細</th>
         </tr>
       </thead>
       <tbody>
-        {% for receipt in page_obj %}
-        <tr data-month="{{ receipt.uploaded_at|date:'Y-m' }}"
-            data-category="{{ receipt.category|default:'(未分類)' }}"
-            data-date="{{ receipt.uploaded_at|date:'Y-m-d' }}">
-          <td><input type="checkbox" name="ids" value="{{ receipt.id }}"></td>
+        {% for receipt in receipts %}
+        <tr>
+          <td><input type="checkbox" class="row-check" name="ids" value="{{ receipt.id }}"></td>
           <td>{{ receipt.id }}</td>
+          <td>{{ receipt.user }}</td>
           <td>{{ receipt.uploaded_at|date:"Y-m-d H:i" }}</td>
           <td>
-            {% if receipt.shop_name %}
-              {{ receipt.shop_name }}
-            {% elif receipt.store_name %}
-              {{ receipt.store_name }}
-            {% else %}
-              -
+            {% if receipt.file %}
+              <img src="{{ receipt.file.url }}" style="max-height:60px;">
             {% endif %}
           </td>
-          <td>{{ receipt.category|default:"(未分類)" }}</td>
-          <td>
-            {% if calculated_totals|default:"" %}
-              {% for key, value in calculated_totals.items %}
-                {% if key == receipt.id %}
-                  ¥{{ value|intcomma }}
-                {% endif %}
-              {% endfor %}
-            {% else %}
-              -
-            {% endif %}
-          </td>
-          <td>{{ receipt.user.username }}</td>
           <td>
             <a href="{% url 'receipt_edit' receipt.id %}" class="admin-btn">編集</a>
-            <button type="button" class="delete-btn" data-id="{{ receipt.id }}">削除</button>
+            <form action="{% url 'receipt_delete' receipt.id %}" method="post" style="display: inline;">
+                {% csrf_token %}
+                <button type="submit" class="delete-btn" onclick="return confirm('本当にこの領収書を削除しますか？');">削除</button>
+            </form>
           </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="6">レシートがありません</td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
-</form>
->>>>>>> eff4d69 (初期バージョン完成)
-
 <!-- ページネーション -->
 {% if page_obj.has_other_pages %}
 <div class="pagination">
@@ -750,6 +690,25 @@ $(document).ready(function() {
 
   // 初期状態の更新
   updateFilterStatus();
+
+  function updateDeleteBtnState() {
+    if ($('input[name="ids"]:checked').length > 0) {
+      $('#bulk-delete-btn').prop('disabled', false);
+    } else {
+      $('#bulk-delete-btn').prop('disabled', true);
+    }
+  }
+
+  // チェックボックスの状態が変わるたびに実行
+  $(document).on('change', 'input[name="ids"]', updateDeleteBtnState);
+
+  // 全選択・選択解除ボタンでも状態を更新
+  $('#select-all-btn, #deselect-all-btn').on('click', function() {
+    setTimeout(updateDeleteBtnState, 10); // チェック状態が反映された後に実行
+  });
+
+  // 初期状態
+  updateDeleteBtnState();
 });
 </script>
 {% endblock %}
