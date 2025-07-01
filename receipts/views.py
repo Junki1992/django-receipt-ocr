@@ -51,6 +51,7 @@ import time
 import shutil
 import pillow_heif
 import base64
+from collections import OrderedDict
 
 # views.py の先頭で一度だけロード
 from tensorflow.keras.models import load_model
@@ -1139,6 +1140,17 @@ def dashboard(request):
             "category": getattr(receipt, "category", "その他"),
         })
 
+    # 追加: ユニークな月リストを作成
+    unique_months = list(OrderedDict.fromkeys(
+        [r.uploaded_at.strftime('%Y-%m') for r in receipts]
+    ))
+    now = timezone.localtime()
+    this_month_str = now.strftime('%Y-%m')
+    if this_month_str not in unique_months:
+        unique_months.insert(0, this_month_str)  # 先頭に追加
+
+    unique_months.sort(reverse=True)
+
     return render(request, 'dashboard.html', {
         'total_count': total_count,
         'total_amount': total_amount,
@@ -1152,6 +1164,7 @@ def dashboard(request):
         'receipt_summaries': receipt_summaries,
         'selected_month': selected_month,
         'now': now,
+        'unique_months': unique_months,
     })
 
 def upload_view(request):
@@ -1267,6 +1280,17 @@ def receipt_dashboard(request):
         category_labels = [c['category'] for c in category_summary]
         category_data = [c['total'] for c in category_summary]
         
+        # ★ここでユニークな月リストを作成
+        unique_months = list(OrderedDict.fromkeys(
+            [r.uploaded_at.strftime('%Y-%m') for r in receipts]
+        ))
+        now = timezone.localtime()
+        this_month_str = now.strftime('%Y-%m')
+        if this_month_str not in unique_months:
+            unique_months.insert(0, this_month_str)  # 先頭に追加
+
+        unique_months.sort(reverse=True)
+
         return render(request, 'receipts/dashboard_receipts.html', {
             'receipts': page_obj,
             'page_obj': page_obj,
@@ -1276,8 +1300,10 @@ def receipt_dashboard(request):
             'category_summary': category_summary,
             'category_labels': category_labels,
             'category_data': category_data,
+            'unique_months': unique_months,  # ← ここで渡す
         })
     except Exception as e:
+        unique_months = []  # ← exceptでも必ず定義
         import traceback
         error_message = traceback.format_exc()
         print(error_message)
@@ -1290,6 +1316,7 @@ def receipt_dashboard(request):
             'category_summary': [],
             'category_labels': [],
             'category_data': [],
+            'unique_months': unique_months,
         })
 
 @login_required

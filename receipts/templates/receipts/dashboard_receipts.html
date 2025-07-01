@@ -330,8 +330,8 @@
       <label for="month-filter">月別フィルター:</label>
       <select id="month-filter" class="filter-select">
         <option value="">全期間</option>
-        {% for receipt in receipts %}
-        <option value="{{ receipt.uploaded_at|date:'Y-m' }}">{{ receipt.uploaded_at|date:"Y年m月" }}</option>
+        {% for ym in unique_months %}
+          <option value="{{ ym }}">{{ ym|slice:":4" }}年{{ ym|slice:"5:7" }}月</option>
         {% endfor %}
       </select>
     </div>
@@ -466,7 +466,7 @@ document.addEventListener('DOMContentLoaded', function() {
       </thead>
       <tbody>
         {% for receipt in receipts %}
-        <tr>
+        <tr data-month="{{ receipt.uploaded_at|date:'Y-m' }}">
           <td><input type="checkbox" class="row-check" name="ids" value="{{ receipt.id }}"></td>
           <td>{{ receipt.id }}</td>
           <td>{{ receipt.user }}</td>
@@ -608,12 +608,12 @@ $(document).ready(function() {
       
       let show = true;
       
-      // 月別フィルター
+      // 月別フィルター（修正）
       if (currentFilters.month && month !== currentFilters.month) {
         show = false;
       }
       
-      // カテゴリフィルター
+      // カテゴリフィルター（修正）
       if (currentFilters.category && category !== currentFilters.category) {
         show = false;
       }
