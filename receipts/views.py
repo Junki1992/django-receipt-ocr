@@ -21,7 +21,7 @@ import re
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing import image as keras_image
 from django.utils import timezone
-from datetime import timedelta
+from datetime import timedelta, datetime
 from collections import defaultdict
 import sys
 from pytesseract import image_to_string
@@ -1067,11 +1067,9 @@ def dashboard(request):
     else:
         receipts = Receipt.objects.filter(user=request.user)
     total_count = receipts.count()
-
-    # 新しい `calculated_total` プロパティを使って合計金額を計算
     total_amount = sum(r.calculated_total for r in receipts)
 
-    # 月別集計
+    # 月別集計（全月分）
     monthly = (
         receipts
         .annotate(month=TruncMonth('uploaded_at'))
@@ -1080,29 +1078,56 @@ def dashboard(request):
         .order_by('month')
     )
     for m in monthly:
-        # 月ごとのレシートを取得し、`calculated_total`で合計
-        monthly_receipts = receipts.filter(uploaded_at__month=m['month'].month)
+        monthly_receipts = receipts.filter(
+            uploaded_at__year=m['month'].year,
+            uploaded_at__month=m['month'].month
+        )
         m['total'] = sum(r.calculated_total for r in monthly_receipts)
+    monthly = list(monthly)
+    now = timezone.localtime()
+    this_month = datetime(now.year, now.month, 1, tzinfo=now.tzinfo)
+    monthly_months = [m['month'] for m in monthly]
+    if this_month not in monthly_months:
+        monthly.append({
+            'month': this_month,
+            'count': 0,
+            'total': 0,
+        })
+    monthly = sorted(monthly, key=lambda m: m['month'])
 
-    # カテゴリ別集計
+    # --- フィルターで選択された月を取得 ---
+    selected_month_str = request.GET.get('month')
+    if selected_month_str:
+        year, month = map(int, selected_month_str.split('-'))
+        selected_month = datetime(year, month, 1, tzinfo=now.tzinfo)
+        receipts_selected = receipts.filter(
+            uploaded_at__year=selected_month.year,
+            uploaded_at__month=selected_month.month
+        )
+    else:
+        # 全期間
+        selected_month = None  # ← Noneにすることで「全期間」が選択される
+        receipts_selected = receipts
+
+    # --- monthly_selectedの定義はこの後 ---
+    monthly_selected = [m for m in monthly if m['month'] == selected_month]
+
+    # --- グラフ・カテゴリ集計も選択中の月だけ ---
     category_summary = (
-        receipts
+        receipts_selected
         .values('category')
         .annotate(count=Count('id'))
         .order_by('category')
     )
     for c in category_summary:
-        # カテゴリごとのレシートを取得し、`calculated_total`で合計
-        category_receipts = receipts.filter(category=c['category'])
+        category_receipts = receipts_selected.filter(category=c['category'])
         c['total'] = sum(r.calculated_total for r in category_receipts)
-
-    # グラフ用データ
     category_labels = [c['category'] or "未分類" for c in category_summary]
     category_data = [c['total'] for c in category_summary]
 
-    # 明細一覧
+    # --- 明細一覧も選択中の月だけ ---
     receipt_summaries = []
-    for receipt in receipts.order_by('-uploaded_at'):
+    for receipt in receipts_selected.order_by('-uploaded_at'):
         receipt_summaries.append({
             "id": receipt.id,
             "uploaded_at": receipt.uploaded_at,
@@ -1117,13 +1142,16 @@ def dashboard(request):
     return render(request, 'dashboard.html', {
         'total_count': total_count,
         'total_amount': total_amount,
-        'monthly': monthly,
+        'monthly': monthly_selected,         # 表示用（選択中の月のみ）
+        'monthly_all': monthly,              # フィルター用（全月分）
         'category_summary': category_summary,
         'category_labels': category_labels,
         'category_data': category_data,
         'category_labels_json': json.dumps(category_labels, ensure_ascii=False),
         'category_data_json': json.dumps(category_data, ensure_ascii=False),
         'receipt_summaries': receipt_summaries,
+        'selected_month': selected_month,
+        'now': now,
     })
 
 def upload_view(request):

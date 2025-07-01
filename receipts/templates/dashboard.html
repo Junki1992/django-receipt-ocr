@@ -98,12 +98,16 @@
       <div class="filter-row">
         <div class="filter-group">
           <label for="month-filter">月別フィルター:</label>
-          <select id="month-filter" class="filter-select">
-            <option value="">全期間</option>
-            {% for row in monthly %}
-            <option value="{{ row.month|date:'Y-m' }}">{{ row.month|date:"Y年m月" }}</option>
-            {% endfor %}
-          </select>
+          <form method="get" id="month-filter-form" style="display:inline;">
+            <select name="month" id="month-filter" class="filter-select" onchange="document.getElementById('month-filter-form').submit();">
+              <option value="">全期間</option>
+              {% for row in monthly_all %}
+                <option value="{{ row.month|date:'Y-m' }}" {% if row.month == selected_month %}selected{% endif %}>
+                  {{ row.month|date:"Y年m月" }}
+                </option>
+              {% endfor %}
+            </select>
+          </form>
         </div>
         
         <div class="filter-group">
@@ -470,7 +474,7 @@ $(document).ready(function() {
 
 .filter-select,
 .filter-input {
-  padding: 8px 12px;
+  padding: 6px 12px;
   border: 1px solid #ced4da;
   border-radius: 4px;
   font-size: 0.9em;
